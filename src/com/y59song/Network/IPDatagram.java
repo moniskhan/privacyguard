@@ -18,15 +18,17 @@ public class IPDatagram {
   public static final int TCP = 6, UDP = 17;
   public static IPDatagram create(ByteBuffer packet) {
     byte[] data = packet.array();
+    //for(int i = 0; i < packet.limit(); i ++)
+    //  Log.d(TAG, Integer.toHexString(data[i] & 0xFF));
     IPHeader header = new IPHeader(Arrays.copyOfRange(data, 0, 60));
     IPPayLoad payLoad = null;
     Log.d(TAG, "protocol : " + (int)header.protocol());
-    Log.d(TAG, "length : " + header.length());
+    Log.d(TAG, "length : " + header.length() + "headerLength : " + header.headerLength());
     Log.d(TAG, "source address : " + header.getSrcAddress().getHostAddress());
     Log.d(TAG, "destination address : " + header.getDstAddress().getHostAddress());
-    Log.d(TAG, "data : " + (data == null));
-    if(header.protocol() == TCP)
+    if(header.protocol() == TCP) {
       payLoad = TCPDatagram.create(Arrays.copyOfRange(data, header.headerLength(), data.length));
+    }
     else return null;
     return new IPDatagram(header, payLoad);
   }

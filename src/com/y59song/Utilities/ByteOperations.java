@@ -25,6 +25,13 @@ public class ByteOperations {
     }
   }
 
+  public static int byteArrayToInteger(byte[] array, int start, int end) {
+    int ret = 0;
+    for(int i = start; i < end; i ++)
+      ret = (ret << 8) + (array[i] & 0xFF);
+    return ret;
+  }
+
   public static byte[] computeCheckSum(byte[] data) {
     int result = 0;
     if(data.length % 2 != 0) result = data[data.length - 1] << 8;

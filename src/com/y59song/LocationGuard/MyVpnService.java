@@ -10,7 +10,11 @@ import com.y59song.Network.IPDatagram;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
+import java.util.Enumeration;
 
 /**
  * Created by frank on 2014-03-26.
@@ -68,9 +72,30 @@ public class MyVpnService extends VpnService implements Runnable{
     }
   }
 
+  private InetAddress getLocalAddress() {
+    try {
+      for(Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces(); en.hasMoreElements();) {
+        NetworkInterface intf = en.nextElement();
+        for(Enumeration<InetAddress> enumIpAddr = intf.getInetAddresses(); enumIpAddr.hasMoreElements();) {
+          InetAddress inetAddress = enumIpAddr.nextElement();
+          Log.d(TAG, "**** INET address *****");
+          Log.d(TAG, "address : " + inetAddress.getHostAddress());
+          Log.d(TAG, "interface name : " + intf.getDisplayName());
+          if(!inetAddress.isLoopbackAddress()) {
+            return inetAddress;
+          }
+        }
+      }
+    } catch (SocketException e) {
+      e.printStackTrace();
+    }
+    return null;
+  }
+
   private void configure() {
     Builder b = new Builder();
-    b.addAddress("10.2.3.4", 28);
+    //b.addAddress("10.0.0.0", 28);
+    b.addAddress(getLocalAddress(), 28);
     b.addRoute("0.0.0.0", 0);
     b.setMtu(1500);
     mInterface = b.establish();

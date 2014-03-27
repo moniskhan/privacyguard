@@ -21,6 +21,16 @@ public class TCPDatagram extends IPPayLoad implements ICommunication {
     return new TCPDatagram(header, Arrays.copyOfRange(data, header.offset(), data.length));
   }
 
+  public static TCPDatagram createACK(TCPHeader header) {
+    TCPHeader newHeader = TCPHeader.createACK(header);
+    return new TCPDatagram(newHeader, new byte[] {0, 0, 0, 0});
+  }
+
+  public static TCPDatagram createSYNACK(TCPHeader header) {
+    TCPHeader newHeader = TCPHeader.createSYNACK(header);
+    return new TCPDatagram(newHeader, new byte[] {0, 0, 0, 0});
+  }
+
   public TCPDatagram(TCPHeader header, byte[] data) {
     this.header = header;
     this.data = data;
@@ -59,6 +69,7 @@ public class TCPDatagram extends IPPayLoad implements ICommunication {
     try {
       OutputStream outputStream = socket.getOutputStream();
       outputStream.write(data);
+      outputStream.close();
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -70,7 +81,9 @@ public class TCPDatagram extends IPPayLoad implements ICommunication {
       ByteBuffer response = ByteBuffer.allocate(32767);
       InputStream inputStream = socket.getInputStream();
       int length = inputStream.read(response.array());
+      inputStream.close();
       response.limit(length);
+      socket.close();
       return response.array();
     } catch (IOException e) {
       e.printStackTrace();

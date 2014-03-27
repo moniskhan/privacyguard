@@ -15,9 +15,9 @@ public class IPHeader extends AbsHeader {
   private byte protocol = 0;
 
   public IPHeader(byte[] data) {
-    headerLength = (data[0] & 0xFF) % 16;
+    headerLength = (data[0] & 0xFF) % 16 * 4;
     length = ((data[2] & 0xFF) << 8) + (data[3] & 0xFF);
-    protocol = data[13];
+    protocol = data[9];
     try {
       srcAddress = InetAddress.getByAddress(Arrays.copyOfRange(data, 12, 16));
       dstAddress = InetAddress.getByAddress(Arrays.copyOfRange(data, 16, 20));

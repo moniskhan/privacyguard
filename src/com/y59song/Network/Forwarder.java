@@ -40,4 +40,9 @@ public class Forwarder implements Runnable {
     IPDatagram newIPDatagram = new IPDatagram(reverseIPHeader, newPayLoad);
     vpnService.fetchResponse(newIPDatagram.toByteArray());
   }
+
+  public void handshake() {
+    TCPDatagram tcpDatagram = (TCPDatagram)ipDatagram.payLoad();
+    TCPDatagram ackDatagram = TCPDatagram.createACK((TCPHeader)tcpDatagram.header());
+  }
 }
