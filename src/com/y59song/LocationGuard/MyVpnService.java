@@ -15,6 +15,7 @@ import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.util.Enumeration;
+import java.util.HashMap;
 
 /**
  * Created by frank on 2014-03-26.
@@ -22,6 +23,7 @@ import java.util.Enumeration;
 public class MyVpnService extends VpnService implements Runnable{
   private static final String TAG = "MyVpnService";
   private Thread mThread;
+  private HashMap<Integer, Thread> portToForwarder;
 
   //The virtual network interface, get and return packets to it
   private ParcelFileDescriptor mInterface;
@@ -33,8 +35,10 @@ public class MyVpnService extends VpnService implements Runnable{
     if(mThread != null) mThread.interrupt();
     mThread = new Thread(this, getClass().getSimpleName());
     mThread.start();
+    portToForwarder = new HashMap<Integer, Thread>();
     return 0;
   }
+
   @Override
   public void run() {
     configure();
@@ -52,6 +56,14 @@ public class MyVpnService extends VpnService implements Runnable{
           packet.limit(length);
           final IPDatagram ip = IPDatagram.create(packet);
           if(ip == null) continue;
+          /*
+          int srcPort = ip.payLoad().getSrcPort();
+          Thread handler;
+          if(portToForwarder.containsKey(srcPort)) handler = portToForwarder.get(srcPort);
+          else {
+            handler = new Thread(new Forwarder(ip, this), "Forwarder_Thread : " + srcPort);
+          }
+          */
           // Send to the appropriate destination
           // Get the response
           // Write to the interface
@@ -75,12 +87,12 @@ public class MyVpnService extends VpnService implements Runnable{
   private InetAddress getLocalAddress() {
     try {
       for(Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces(); en.hasMoreElements();) {
-        NetworkInterface intf = en.nextElement();
-        for(Enumeration<InetAddress> enumIpAddr = intf.getInetAddresses(); enumIpAddr.hasMoreElements();) {
+        NetworkInterface netInterface = en.nextElement();
+        for(Enumeration<InetAddress> enumIpAddr = netInterface.getInetAddresses(); enumIpAddr.hasMoreElements();) {
           InetAddress inetAddress = enumIpAddr.nextElement();
           Log.d(TAG, "**** INET address *****");
           Log.d(TAG, "address : " + inetAddress.getHostAddress());
-          Log.d(TAG, "interface name : " + intf.getDisplayName());
+          Log.d(TAG, "interface name : " + netInterface.getDisplayName());
           if(!inetAddress.isLoopbackAddress()) {
             return inetAddress;
           }

@@ -19,9 +19,7 @@ public abstract class IPPayLoad {
     return ByteOperations.concatenate(header.toByteArray(), data);
   }
   public int length() {
-    int a = header.headerLength();
-    int b = data.length;
-    return header.headerLength() + data.length;
+    return header.headerLength() + (data == null ? 0 : data.length);
   }
   protected byte[] getPseudoHeader(IPHeader ipHeader) {
     byte length = (byte)(length());

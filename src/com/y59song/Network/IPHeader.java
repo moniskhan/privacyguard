@@ -1,5 +1,6 @@
 package com.y59song.Network;
 
+import android.util.Log;
 import com.y59song.Utilities.ByteOperations;
 
 import java.net.InetAddress;
@@ -51,17 +52,18 @@ public class IPHeader extends AbsHeader {
   }
 
   public byte[] getSrcAddressByteArray() {
-    return Arrays.copyOfRange(data, 12, 4);
+    Log.d("IPHEADER", "******* " + data.length);
+    return Arrays.copyOfRange(data, 12, 16);
   }
 
   public byte[] getDstAddressByteArray() {
-    return Arrays.copyOfRange(data, 16, 4);
+    return Arrays.copyOfRange(data, 16, 20);
   }
 
   @Override
   public IPHeader reverse() {
     byte[] reverseData = Arrays.copyOfRange(data, 0, data.length);
     ByteOperations.swap(reverseData, 12, 16, 4);
-    return null;
+    return new IPHeader(reverseData);
   }
 }

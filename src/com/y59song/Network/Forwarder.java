@@ -32,7 +32,7 @@ public class Forwarder implements Runnable {
     IPHeader reverseIPHeader = ipDatagram.header().reverse();
     byte[] payLoaderHeader = ipDatagram.payLoad().header().reverse().toByteArray(); // set corrent port
     IPPayLoad newPayLoad = null;
-    //if(true || ipDatagram.header().protocol() == IPDatagram.TCP) // TODO
+    //if(ipDatagram.header().protocol() == IPDatagram.TCP) // TODO
       newPayLoad = new TCPDatagram(new TCPHeader(payLoaderHeader), response); // set the response
     newPayLoad.update(reverseIPHeader); // set the corrent checksum
 
@@ -42,7 +42,15 @@ public class Forwarder implements Runnable {
   }
 
   public void handshake() {
+    // Receive the first SYN
     TCPDatagram tcpDatagram = (TCPDatagram)ipDatagram.payLoad();
-    TCPDatagram ackDatagram = TCPDatagram.createACK((TCPHeader)tcpDatagram.header());
+    // Respond with SYNACK
+    TCPDatagram syn_ackDatagram = TCPDatagram.createSYNACK((TCPHeader)tcpDatagram.header());
+    // Receive the ACK
+    // Receive the SYN
+    // Respond with ACK
+    // Respond with DATA
+    // Receive the ACK
+    // Receive
   }
 }

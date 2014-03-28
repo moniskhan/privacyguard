@@ -6,8 +6,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
 import java.util.Arrays;
 
 /**
@@ -57,7 +59,7 @@ public class TCPDatagram extends IPPayLoad implements ICommunication {
   @Override
   public Socket connect(InetAddress dstAddress, int port) {
     try {
-      socket = new Socket(dstAddress, port);
+      socket = SocketChannel.open().socket();
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -67,6 +69,7 @@ public class TCPDatagram extends IPPayLoad implements ICommunication {
   @Override
   public void send(InetAddress dstAddress, int dstPort) {
     try {
+      socket.connect(new InetSocketAddress(dstAddress, dstPort));
       OutputStream outputStream = socket.getOutputStream();
       outputStream.write(data);
       outputStream.close();
