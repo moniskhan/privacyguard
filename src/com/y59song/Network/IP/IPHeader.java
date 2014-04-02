@@ -1,6 +1,6 @@
-package com.y59song.Network;
+package com.y59song.Network.IP;
 
-import android.util.Log;
+import com.y59song.Network.AbsHeader;
 import com.y59song.Utilities.ByteOperations;
 
 import java.net.InetAddress;
@@ -52,7 +52,6 @@ public class IPHeader extends AbsHeader {
   }
 
   public byte[] getSrcAddressByteArray() {
-    Log.d("IPHEADER", "******* " + data.length);
     return Arrays.copyOfRange(data, 12, 16);
   }
 

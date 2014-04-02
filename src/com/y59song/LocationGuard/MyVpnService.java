@@ -3,9 +3,9 @@ package com.y59song.LocationGuard;
 import android.content.Intent;
 import android.net.VpnService;
 import android.os.ParcelFileDescriptor;
-import android.util.Log;
-import com.y59song.Network.Forwarder;
-import com.y59song.Network.IPDatagram;
+import com.y59song.Forwader.AbsForwarder;
+import com.y59song.Forwader.ForwarderBuilder;
+import com.y59song.Network.IP.IPDatagram;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -23,7 +23,7 @@ import java.util.HashMap;
 public class MyVpnService extends VpnService implements Runnable{
   private static final String TAG = "MyVpnService";
   private Thread mThread;
-  private HashMap<Integer, Thread> portToForwarder;
+  public static HashMap<Integer, AbsForwarder> portToForwarder;
 
   //The virtual network interface, get and return packets to it
   private ParcelFileDescriptor mInterface;
@@ -35,7 +35,7 @@ public class MyVpnService extends VpnService implements Runnable{
     if(mThread != null) mThread.interrupt();
     mThread = new Thread(this, getClass().getSimpleName());
     mThread.start();
-    portToForwarder = new HashMap<Integer, Thread>();
+    portToForwarder = new HashMap<Integer, AbsForwarder>();
     return 0;
   }
 
@@ -49,25 +49,20 @@ public class MyVpnService extends VpnService implements Runnable{
     try {
       while (mInterface != null && mInterface.getFileDescriptor() != null && mInterface.getFileDescriptor().valid()) {
         packet.clear();
-        // Read from the interface
         int length = localIn.read(packet.array());
         if(length > 0) {
-          Log.d(TAG, "*** new packet *** length : " + length);
           packet.limit(length);
           final IPDatagram ip = IPDatagram.create(packet);
+          packet.clear();
           if(ip == null) continue;
-          /*
-          int srcPort = ip.payLoad().getSrcPort();
-          Thread handler;
-          if(portToForwarder.containsKey(srcPort)) handler = portToForwarder.get(srcPort);
-          else {
-            handler = new Thread(new Forwarder(ip, this), "Forwarder_Thread : " + srcPort);
-          }
-          */
-          // Send to the appropriate destination
-          // Get the response
-          // Write to the interface
-          new Thread(new Forwarder(ip, this), "Forwarder_Thread").start();
+          int port = ip.payLoad().getSrcPort();
+          AbsForwarder temp;
+          if(!portToForwarder.containsKey(port)) {
+            temp = ForwarderBuilder.build(ip.header().protocol(), this);
+            temp.start();
+            portToForwarder.put(port, temp);
+          } else temp = portToForwarder.get(port);
+          temp.send(ip);
         }
       }
     } catch (IOException e) {
@@ -78,7 +73,11 @@ public class MyVpnService extends VpnService implements Runnable{
   public synchronized void fetchResponse(byte[] response) {
     if(localOut == null || response == null) return;
     try {
+      //Log.d(TAG, "Response in Hex : " + ByteOperations.byteArrayToHexString(response));
+      //Log.d(TAG, "Response in Char : " + ByteOperations.byteArrayToString(response));
+      //Log.d(TAG, "Response length : " + response.length);
       localOut.write(response);
+      localOut.flush();
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -90,9 +89,6 @@ public class MyVpnService extends VpnService implements Runnable{
         NetworkInterface netInterface = en.nextElement();
         for(Enumeration<InetAddress> enumIpAddr = netInterface.getInetAddresses(); enumIpAddr.hasMoreElements();) {
           InetAddress inetAddress = enumIpAddr.nextElement();
-          Log.d(TAG, "**** INET address *****");
-          Log.d(TAG, "address : " + inetAddress.getHostAddress());
-          Log.d(TAG, "interface name : " + netInterface.getDisplayName());
           if(!inetAddress.isLoopbackAddress()) {
             return inetAddress;
           }
@@ -109,6 +105,9 @@ public class MyVpnService extends VpnService implements Runnable{
     //b.addAddress("10.0.0.0", 28);
     b.addAddress(getLocalAddress(), 28);
     b.addRoute("0.0.0.0", 0);
+    b.addDnsServer("8.8.8.8");
+    //b.addRoute("173.194.43.116", 32);
+    //b.addRoute("123.125.114.144", 32);
     b.setMtu(1500);
     mInterface = b.establish();
   }

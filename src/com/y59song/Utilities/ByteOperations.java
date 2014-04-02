@@ -6,11 +6,13 @@ package com.y59song.Utilities;
 public class ByteOperations {
   public static byte[] concatenate(byte[]...arrays) {
     int totalLength = 0;
-    for(byte[] array : arrays) totalLength += array.length;
+    for(byte[] array : arrays)
+      if(array != null) totalLength += array.length;
     byte[] result = new byte[totalLength];
 
     int currentIndex = 0;
     for(byte[] array : arrays) {
+      if(array == null) continue;
       System.arraycopy(array, 0, result, currentIndex, array.length);
       currentIndex += array.length;
     }
@@ -29,6 +31,22 @@ public class ByteOperations {
     int ret = 0;
     for(int i = start; i < end; i ++)
       ret = (ret << 8) + (array[i] & 0xFF);
+    return ret;
+  }
+
+  public static String byteArrayToHexString(byte[] array) {
+    String ret = "";
+    for(byte b : array) {
+      ret += Integer.toHexString(b & 0xFF) + " ";
+    }
+    return ret;
+  }
+
+  public static String byteArrayToString(byte[] array) {
+    String ret = "";
+    for(byte b : array) {
+      ret += Character.toString((char)(b & 0xFF));
+    }
     return ret;
   }
 

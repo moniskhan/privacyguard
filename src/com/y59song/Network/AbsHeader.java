@@ -8,7 +8,8 @@ public abstract class AbsHeader {
   protected int checkSum_pos, checkSum_size;
   public abstract AbsHeader reverse();
   public int headerLength() {
-    return data.length;
+    if(data == null) return 0;
+    else return data.length;
   }
   public void setCheckSum(byte[] checksum) {
     System.arraycopy(checksum, 0, data, checkSum_pos, checkSum_size);

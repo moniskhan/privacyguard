@@ -1,6 +1,8 @@
-package com.y59song.Network;
+package com.y59song.Network.IP;
 
-import android.util.Log;
+import com.y59song.Network.IPPayLoad;
+import com.y59song.Network.TCP.TCPDatagram;
+import com.y59song.Network.UDP.UDPDatagram;
 import com.y59song.Utilities.ByteOperations;
 
 import java.nio.ByteBuffer;
@@ -17,17 +19,13 @@ public class IPDatagram {
 
   public static final int TCP = 6, UDP = 17;
   public static IPDatagram create(ByteBuffer packet) {
-    byte[] data = packet.array();
-    //for(int i = 0; i < packet.limit(); i ++)
-    //  Log.d(TAG, Integer.toHexString(data[i] & 0xFF));
+    byte[] data = Arrays.copyOfRange(packet.array(), 0, packet.limit());
     IPHeader header = new IPHeader(Arrays.copyOfRange(data, 0, 60));
-    IPPayLoad payLoad = null;
-    Log.d(TAG, "protocol : " + (int)header.protocol());
-    Log.d(TAG, "length : " + header.length() + "headerLength : " + header.headerLength());
-    Log.d(TAG, "source address : " + header.getSrcAddress().getHostAddress());
-    Log.d(TAG, "destination address : " + header.getDstAddress().getHostAddress());
+    IPPayLoad payLoad;
     if(header.protocol() == TCP) {
       payLoad = TCPDatagram.create(Arrays.copyOfRange(data, header.headerLength(), data.length));
+    } else if(header.protocol() == UDP) {
+      payLoad = UDPDatagram.create(Arrays.copyOfRange(data, header.headerLength(), data.length));
     }
     else return null;
     return new IPDatagram(header, payLoad);
