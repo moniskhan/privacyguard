@@ -45,6 +45,7 @@ public abstract class AbsForwarder extends Thread {
   }
 
   protected void forwardResponse(IPHeader ipHeader, IPPayLoad datagram) {
+    if(ipHeader == null || datagram == null) return;
     datagram.update(ipHeader); // set the checksum
     IPDatagram newIpDatagram = new IPDatagram(ipHeader, datagram); // set the ip datagram, will update the length and the checksum
     vpnService.fetchResponse(newIpDatagram.toByteArray());

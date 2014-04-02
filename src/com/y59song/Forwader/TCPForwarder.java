@@ -57,9 +57,11 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
     TCPHeader tcpHeader = (TCPHeader) tcpDatagram.header();
     byte flag = tcpHeader.getFlag();
     if((flag & TCPHeader.SYN) == TCPHeader.SYN) {
-      if (status == Status.HAND_SHAKE) forwardResponse(newIPHeader, handshake(tcpDatagram));
+      status = Status.HAND_SHAKE;
+      forwardResponse(newIPHeader, handshake(tcpDatagram));
     } else if((flag & TCPHeader.DATA) == TCPHeader.DATA) {
       dstAddress = ipDatagram.header().getDstAddress();
+      transEnd = false;
       forwardResponse(newIPHeader, data_ack(tcpDatagram));
       forwardResponse(newIPHeader, data_transfer(tcpDatagram, true));
     } else if((flag & TCPHeader.ACK) == TCPHeader.ACK) {
@@ -98,7 +100,7 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
     //Log.d(TAG, " Response : " + ByteOperations.byteArrayToString(response));
     int begin = offset, end = Math.min(offset + 1024, response.length);
     offset = end;
-    TCPHeader newTCPHeader = TCPHeader.createDATA(tcpDatagram, transEnd && end == response.length);
+    TCPHeader newTCPHeader = TCPHeader.createDATA(tcpDatagram, begin == end);
     return new TCPDatagram(newTCPHeader, response, begin, end);
   }
 

@@ -53,7 +53,8 @@ public class TCPHeader extends TransportHeader {
     TCPHeader ret = header.reverse();
     ret.setSeq_num(header.getAck_num());
     ret.setAck_num(header.getSeq_num() + tcpDatagram.dataLength());
-    ret.set_FLAG(ACK);
+    if(!last) ret.set_FLAG(ACK);
+    else ret.set_FLAG(DATA);
     return ret;
   }
 

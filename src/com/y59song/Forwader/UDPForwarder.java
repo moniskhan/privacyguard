@@ -12,7 +12,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.DatagramChannel;
+import java.util.Arrays;
 
 /**
  * Created by frank on 2014-03-29.
@@ -28,10 +28,13 @@ public class UDPForwarder extends AbsForwarder implements ICommunication {
   @Override
   protected void process(IPDatagram ipDatagram) {
     UDPDatagram udpDatagram = (UDPDatagram)ipDatagram.payLoad();
+    //Log.d(TAG, "Request : " + ByteOperations.byteArrayToString(udpDatagram.data()));
     setup(ipDatagram.header().getDstAddress(), ipDatagram.payLoad().getDstPort());
     send(udpDatagram);
 
     byte[] response = receive();
+    //Log.d(TAG, "Response " + ByteOperations.byteArrayToString(response));
+    //Log.d(TAG, "Response : " + ByteOperations.byteArrayToString(response));
     IPHeader newIPHeader = ipDatagram.header().reverse();
     UDPHeader newUDPHeader = (UDPHeader)udpDatagram.header().reverse();
     UDPDatagram newUDPDatagram = new UDPDatagram(newUDPHeader, response);
@@ -42,12 +45,12 @@ public class UDPForwarder extends AbsForwarder implements ICommunication {
   @Override
   public void setup(InetAddress dstAddress, int dstPort) {
     try {
-      socket = DatagramChannel.open().socket();
+      //socket = DatagramChannel.open().socket();
+      socket = new DatagramSocket();
     } catch (IOException e) {
       e.printStackTrace();
     }
     vpnService.protect(socket);
-    socket.connect(dstAddress, dstPort);
     this.dstAddress = dstAddress;
     this.dstPort = dstPort;
   }
@@ -70,7 +73,7 @@ public class UDPForwarder extends AbsForwarder implements ICommunication {
     } catch (IOException e) {
       e.printStackTrace();
     }
-    return response.getData();
+    return Arrays.copyOfRange(response.getData(), 0, response.getLength());
   }
 
   @Override

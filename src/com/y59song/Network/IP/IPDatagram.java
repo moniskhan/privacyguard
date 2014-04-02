@@ -19,13 +19,12 @@ public class IPDatagram {
 
   public static final int TCP = 6, UDP = 17;
   public static IPDatagram create(ByteBuffer packet) {
-    byte[] data = Arrays.copyOfRange(packet.array(), 0, packet.limit());
-    IPHeader header = new IPHeader(Arrays.copyOfRange(data, 0, 60));
+    IPHeader header = new IPHeader(Arrays.copyOfRange(packet.array(), 0, 60));
     IPPayLoad payLoad;
     if(header.protocol() == TCP) {
-      payLoad = TCPDatagram.create(Arrays.copyOfRange(data, header.headerLength(), data.length));
+      payLoad = TCPDatagram.create(Arrays.copyOfRange(packet.array(), header.headerLength(), packet.limit()));
     } else if(header.protocol() == UDP) {
-      payLoad = UDPDatagram.create(Arrays.copyOfRange(data, header.headerLength(), data.length));
+      payLoad = UDPDatagram.create(Arrays.copyOfRange(packet.array(), header.headerLength(), packet.limit()));
     }
     else return null;
     return new IPDatagram(header, payLoad);
