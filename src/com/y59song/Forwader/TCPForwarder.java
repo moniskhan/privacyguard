@@ -51,7 +51,7 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
    * step 6 : combine the tcp datagram and the ip datagram, update the ip header
    */
   @Override
-  protected void process(IPDatagram ipDatagram) {
+  protected void forward (IPDatagram ipDatagram) {
     IPHeader newIPHeader = ipDatagram.header().reverse();
     TCPDatagram tcpDatagram = (TCPDatagram) ipDatagram.payLoad();
     TCPHeader tcpHeader = (TCPHeader) tcpDatagram.header();
@@ -79,6 +79,11 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
       forwardResponse(newIPHeader, end_ack(tcpDatagram));
       forwardResponse(newIPHeader, end_fin_ack(tcpDatagram));
     }
+  }
+
+  @Override
+  protected void receive (byte[] data, int length) {
+    forwardResponse(newIP)
   }
 
   private TCPDatagram handshake(TCPDatagram tcpDatagram) {

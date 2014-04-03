@@ -14,6 +14,7 @@ import java.net.InetAddress;
  * Created by frank on 2014-03-29.
  */
 public abstract class AbsForwarder extends Thread {
+  public static final int FORWARD = 0, RECEIVE = 1;
   protected InetAddress dstAddress;
   protected int dstPort;
   protected MyVpnService vpnService;
@@ -27,20 +28,36 @@ public abstract class AbsForwarder extends Thread {
     mHandler = new Handler() {
       @Override
       public void handleMessage(Message msg) {
-        process((IPDatagram)msg.obj);
+        switch(msg.what) {
+          case FORWARD: forward((IPDatagram) msg.obj); break;
+          case RECEIVE: receive((byte[]) msg.obj, msg.arg1); break;
+          default: break;
+        }
       }
     };
     Looper.loop();
   }
 
-  protected abstract void process(IPDatagram ip);
+  protected abstract void forward (IPDatagram ip);
+
+  protected abstract void receive (byte[] data, int length);
 
   public Handler getHandler() { return mHandler; }
 
   public void send(IPDatagram ip) {
     if(mHandler == null) return;
     Message msg = Message.obtain();
+    msg.what = FORWARD;
     msg.obj = ip;
+    mHandler.sendMessage(msg);
+  }
+
+  public void send(byte[] data, int length) {
+    if(mHandler == null) return;
+    Message msg = Message.obtain();
+    msg.what = RECEIVE;
+    msg.obj = data;
+    msg.arg1 = length;
     mHandler.sendMessage(msg);
   }
 
