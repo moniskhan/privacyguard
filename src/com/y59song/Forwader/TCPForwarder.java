@@ -1,12 +1,12 @@
 package com.y59song.Forwader;
 
+import com.y59song.Forwader.Receiver.TCPReceiver;
 import com.y59song.LocationGuard.MyVpnService;
 import com.y59song.Network.IP.IPDatagram;
 import com.y59song.Network.IP.IPHeader;
 import com.y59song.Network.IPPayLoad;
 import com.y59song.Network.TCP.TCPDatagram;
 import com.y59song.Network.TCP.TCPHeader;
-import com.y59song.Utilities.ByteOperations;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -16,7 +16,6 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
-import java.util.Arrays;
 
 /**
  * Created by frank on 2014-03-27.
@@ -24,11 +23,13 @@ import java.util.Arrays;
 public class TCPForwarder extends AbsForwarder implements ICommunication {
   private final String TAG = "TCPForwarder";
   private Socket socket;
+  private IPHeader newIPHeader;
   private DataInputStream inputStream;
   private DataOutputStream outputStream;
-  private int offset = 0, total_length = 0;
+  private int expected_ack, exptected_seq;
   private boolean transEnd = false;
-  private byte[] response;
+  private ByteBuffer response;
+  private TCPReceiver receiver;
 
   public enum Status {
     END, DATA, HAND_SHAKE;
@@ -38,7 +39,7 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
 
   public TCPForwarder(MyVpnService vpnService) {
     super(vpnService);
-    response = new byte[]{};
+    response = ByteBuffer.allocate(32767);
     status = Status.HAND_SHAKE;
   }
 
@@ -52,38 +53,60 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
    */
   @Override
   protected void forward (IPDatagram ipDatagram) {
-    IPHeader newIPHeader = ipDatagram.header().reverse();
-    TCPDatagram tcpDatagram = (TCPDatagram) ipDatagram.payLoad();
+    newIPHeader = ipDatagram.header().reverse();
+    TCPDatagram tcpDatagram = (TCPDatagram) ipDatagram.payLoad(), newTCPDatagram = null;
     TCPHeader tcpHeader = (TCPHeader) tcpDatagram.header();
     byte flag = tcpHeader.getFlag();
-    if((flag & TCPHeader.SYN) == TCPHeader.SYN) {
+    if((flag & TCPHeader.SYN) != 0) {
       status = Status.HAND_SHAKE;
-      forwardResponse(newIPHeader, handshake(tcpDatagram));
-    } else if((flag & TCPHeader.DATA) == TCPHeader.DATA) {
-      dstAddress = ipDatagram.header().getDstAddress();
-      transEnd = false;
-      forwardResponse(newIPHeader, data_ack(tcpDatagram));
-      forwardResponse(newIPHeader, data_transfer(tcpDatagram, true));
-    } else if((flag & TCPHeader.ACK) == TCPHeader.ACK) {
-      switch(status) {
-        case HAND_SHAKE: status = Status.DATA; break;
-        case END: status = Status.HAND_SHAKE; break;
-        case DATA: {
-          TCPDatagram temp = data_transfer(tcpDatagram, false);
-          forwardResponse(newIPHeader, temp);
-          break;
-        }
-      }
+      newTCPDatagram = handshake(tcpDatagram);
+      forwardResponse(newIPHeader, newTCPDatagram);
+      expected_ack = ((TCPHeader) newTCPDatagram.header()).getSeq_num() + 1;
     } else if((flag & TCPHeader.FIN) != 0) {
       status = Status.END;
-      forwardResponse(newIPHeader, end_ack(tcpDatagram));
-      forwardResponse(newIPHeader, end_fin_ack(tcpDatagram));
+      newTCPDatagram = end_ack(newTCPDatagram);
+      forwardResponse(newIPHeader, newTCPDatagram);
+      newTCPDatagram = end_fin_ack(tcpDatagram);
+      forwardResponse(newIPHeader, newTCPDatagram);
+      close();
+    } else if((flag & TCPHeader.PSH) != 0) {
+      newTCPDatagram = data_ack(tcpDatagram);
+      forwardResponse(newIPHeader, newTCPDatagram);
+      send(tcpDatagram);
+      receiver.update(newIPHeader, tcpDatagram, true);
+    } else { // ACK
+      if(status == Status.HAND_SHAKE) {
+        setup(ipDatagram.header().getDstAddress(), tcpDatagram.getDstPort());
+        status = Status.DATA;
+      } else if(status == Status.DATA) {
+        receiver.update(newIPHeader, tcpDatagram, false);
+      }
     }
+    /*
+    } else if((flag & TCPHeader.ACK) != 0) {
+      if (status == Status.HAND_SHAKE) {
+        setup(ipDatagram.header().getDstAddress(), tcpDatagram.getDstPort());
+        status = Status.DATA;
+      } else if (tcpDatagram.dataLength() != 0) {
+        newTCPDatagram = data_ack(tcpDatagram);
+        send(tcpDatagram);
+      } else if (status != Status.END) {
+        if (response == null || response.position() == response.limit()) return;
+        newTCPDatagram = data_transfer(tcpDatagram);
+        expected_ack = ((TCPHeader) newTCPDatagram.header()).getSeq_num() + newTCPDatagram.dataLength();
+      }
+    }
+    */
   }
 
   @Override
-  protected void receive (byte[] data, int length) {
-    forwardResponse(newIP)
+  protected void receive (ByteBuffer response) {
+    if(this.response.position() == this.response.limit())
+      this.response = response;
+    else {
+      this.response.put(response);
+      // TODO
+    }
   }
 
   private TCPDatagram handshake(TCPDatagram tcpDatagram) {
@@ -96,26 +119,25 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
     return new TCPDatagram(newTCPHeader, null);
   }
 
-  private TCPDatagram data_transfer(TCPDatagram tcpDatagram, boolean isFirst) {
+  private TCPDatagram data_transfer(TCPDatagram tcpDatagram) {
     //Log.d(TAG, " Request : " + ByteOperations.byteArrayToString(datagram.data));
-    if(isFirst) { setup(dstAddress, tcpDatagram.getDstPort()); send(tcpDatagram); }
-    if(response.length <= (offset + 1024) && !transEnd) {
-      response = ByteOperations.concatenate(response, receive());
-    }
+    TCPHeader ackHeader = (TCPHeader) tcpDatagram.header();
+    int offset = response.position() - (expected_ack - ackHeader.getAck_num());
     //Log.d(TAG, " Response : " + ByteOperations.byteArrayToString(response));
-    int begin = offset, end = Math.min(offset + 1024, response.length);
-    offset = end;
+    int begin = offset, end = Math.min(offset + 1024, response.limit());
     TCPHeader newTCPHeader = TCPHeader.createDATA(tcpDatagram, begin == end);
-    return new TCPDatagram(newTCPHeader, response, begin, end);
+    response.position(end);
+    expected_ack = expected_ack + end - begin;
+    return new TCPDatagram(newTCPHeader, response.array(), begin, end);
   }
 
   private TCPDatagram end_ack(TCPDatagram tcpDatagram) {
-    TCPHeader newTCPHeader = TCPHeader.createACKSEQ(tcpDatagram);
+    TCPHeader newTCPHeader = TCPHeader.createACK(tcpDatagram);
     return new TCPDatagram(newTCPHeader, null);
   }
 
   private TCPDatagram end_fin_ack(TCPDatagram tcpDatagram) {
-    TCPHeader newTCPHeader = TCPHeader.createACKFIN(tcpDatagram);
+    TCPHeader newTCPHeader = TCPHeader.createFINACK(tcpDatagram);
     return new TCPDatagram(newTCPHeader, null);
   }
 
@@ -128,23 +150,6 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
       outputStream.flush();
     } catch (IOException e) {
       e.printStackTrace();
-    }
-  }
-
-  @Override
-  public byte[] receive() {
-    if(transEnd) return null;
-    try {
-      ByteBuffer response = ByteBuffer.allocate(32767);
-      //Log.d(TAG, "" + (socket == null) + " , " + (socket.getInputStream() == null));
-      if (inputStream == null) inputStream = new DataInputStream(socket.getInputStream());
-      int length = inputStream.read(response.array());
-      if(length <= 0) throw new Exception();
-      response.limit(length);
-      return Arrays.copyOfRange(response.array(), 0, length);
-    } catch (Exception e) {
-      transEnd = true;
-      return null;
     }
   }
 
@@ -166,6 +171,8 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
       vpnService.protect(socket);
       socket.connect(new InetSocketAddress(dstAddress, port));
       socket.setSoTimeout(1000);
+      receiver = new TCPReceiver(socket, this);
+      new Thread(receiver).start();
     } catch (IOException e) {
       e.printStackTrace();
     }

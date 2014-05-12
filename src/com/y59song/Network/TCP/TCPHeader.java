@@ -15,6 +15,7 @@ public class TCPHeader extends TransportHeader {
   public static final byte FIN = 0x01;
   public static final byte ACK = 0x10;
   public static final byte SYN = 0x02;
+  public static final byte PSH = 0x08;
   public static final byte DATA = 0x18;
 
   public TCPHeader(byte[] data) {
@@ -27,49 +28,39 @@ public class TCPHeader extends TransportHeader {
     this.data = Arrays.copyOfRange(data, 0, offset);
   }
 
+  public static TCPHeader createHeader(TCPHeader origin, int size, byte flag) {
+    TCPHeader ret = origin.reverse();
+    ret.setSeq_num(origin.getAck_num());
+    ret.setAck_num(origin.getSeq_num() + size);
+    ret.setFlag(flag);
+    return ret;
+  }
+
+
   public static TCPHeader createACK(TCPDatagram tcpDatagram) {
     // set ACK
     TCPHeader header = (TCPHeader) tcpDatagram.header();
-    TCPHeader ret = header.reverse();
-    ret.setAck_num(header.getSeq_num() + tcpDatagram.dataLength());
-    ret.setSeq_num(header.getAck_num());
-    ret.set_FLAG(ACK);
-    return ret;
+    byte flag = header.getFlag();
+    int size = tcpDatagram.dataLength();
+    if((flag & (SYN | FIN)) != 0) size = 1;
+    return createHeader(header, size, ACK);
   }
 
   public static TCPHeader createSYNACK(TCPDatagram tcpDatagram) {
     // set SYN
     TCPHeader header = (TCPHeader) tcpDatagram.header();
-    TCPHeader ret = header.reverse();
-    ret.setAck_num(header.getSeq_num() + 1);
-    ret.setSeq_num(20000);
-    ret.set_FLAG((byte)(ACK | SYN));
-    return ret;
+    return createHeader(header, 1, (byte) (ACK | SYN));
+  }
+
+  public static TCPHeader createFINACK(TCPDatagram tcpDatagram) {
+    TCPHeader header = (TCPHeader) tcpDatagram.header();
+    return createHeader(header, 1, (byte) (ACK | FIN));
   }
 
   public static TCPHeader createDATA(TCPDatagram tcpDatagram, boolean last) {
     // set DATA
     TCPHeader header = (TCPHeader) tcpDatagram.header();
-    TCPHeader ret = header.reverse();
-    ret.setSeq_num(header.getAck_num());
-    ret.setAck_num(header.getSeq_num() + tcpDatagram.dataLength());
-    if(!last) ret.set_FLAG(ACK);
-    else ret.set_FLAG(DATA);
-    return ret;
-  }
-
-  public static TCPHeader createACKSEQ(TCPDatagram tcpDatagram) {
-    // set ACK, SEQ
-    TCPHeader ret = createACK(tcpDatagram);
-    TCPHeader header = (TCPHeader) tcpDatagram.header();
-    ret.setSeq_num(header.getAck_num());
-    return ret;
-  }
-
-  public static TCPHeader createACKFIN(TCPDatagram tcpDatagram) {
-    TCPHeader ret = createACK(tcpDatagram);
-    ret.set_FLAG((byte)(ACK | FIN));
-    return ret;
+    return createHeader(header, tcpDatagram.dataLength(), last ? DATA : ACK);
   }
 
   public int offset() {
@@ -93,7 +84,7 @@ public class TCPHeader extends TransportHeader {
     System.arraycopy(bytes, 0, data, 4, 4);
   }
 
-  private void set_FLAG(byte flag) {
+  private void setFlag(byte flag) {
     data[13] = flag;
   }
 

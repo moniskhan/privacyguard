@@ -26,7 +26,7 @@ public class UDPForwarder extends AbsForwarder implements ICommunication {
   }
 
   @Override
-  protected void process(IPDatagram ipDatagram) {
+  protected void forward(IPDatagram ipDatagram) {
     UDPDatagram udpDatagram = (UDPDatagram)ipDatagram.payLoad();
     //Log.d(TAG, "Request : " + ByteOperations.byteArrayToString(udpDatagram.data()));
     setup(ipDatagram.header().getDstAddress(), ipDatagram.payLoad().getDstPort());
@@ -41,6 +41,9 @@ public class UDPForwarder extends AbsForwarder implements ICommunication {
     forwardResponse(newIPHeader, newUDPDatagram);
   }
 
+  @Override
+  protected void receive(ByteBuffer response) {
+  }
 
   @Override
   public void setup(InetAddress dstAddress, int dstPort) {
@@ -64,7 +67,6 @@ public class UDPForwarder extends AbsForwarder implements ICommunication {
     }
   }
 
-  @Override
   public byte[] receive() {
     ByteBuffer packet = ByteBuffer.allocate(32767);
     DatagramPacket response = new DatagramPacket(packet.array(), 32767);

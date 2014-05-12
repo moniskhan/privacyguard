@@ -1,10 +1,15 @@
 package com.y59song.Forwader.Receiver;
 
+import android.util.Log;
 import com.y59song.Forwader.TCPForwarder;
+import com.y59song.Network.IP.IPHeader;
+import com.y59song.Network.TCP.TCPDatagram;
+import com.y59song.Network.TCP.TCPHeader;
 
 import java.io.DataInputStream;
 import java.net.Socket;
 import java.nio.ByteBuffer;
+import java.util.Queue;
 
 /**
  * Created by y59song on 03/04/14.
@@ -12,6 +17,10 @@ import java.nio.ByteBuffer;
 public class TCPReceiver implements Runnable {
   private Socket socket;
   private TCPForwarder forwarder;
+  private Queue<ByteBuffer> queue;
+  private boolean isFirst = false;
+  private IPHeader requestHeader;
+  private TCPDatagram requestTCPDatagram;
 
   public TCPReceiver(Socket socket, TCPForwarder forwarder) {
     this.socket = socket;
@@ -19,23 +28,43 @@ public class TCPReceiver implements Runnable {
   }
 
   @Override
-  public void run() {
+  public synchronized void run() {
     try {
       DataInputStream inputStream = new DataInputStream(socket.getInputStream());
       while(true) {
         ByteBuffer response = ByteBuffer.allocate(32767);
-        //Log.d(TAG, "" + (socket == null) + " , " + (socket.getInputStream() == null));
         if (inputStream == null) inputStream = new DataInputStream(socket.getInputStream());
         int length = inputStream.read(response.array());
-        if(length <= 0) throw new Exception();
-        else {
+        Log.d("TCP", "" + length);
+        if(length > 0) {
           response.limit(length);
-          forwarder.send(response.array(), length);
+          queue.add(response);
+        }
+        if(isFirst && !queue.isEmpty()) {
+          isFirst = false;
+          forwarder.forwardResponse(requestHeader, data_transfer(requestTCPDatagram));
         }
       }
     } catch (Exception e) {
       e.printStackTrace();
     }
+  }
 
+  private ByteBuffer getResponse() {
+    ByteBuffer response = queue.element();
+    byte[] temp = new byte[1024];
+    if(response.remaining() < 1024) queue.remove();
+    return response.get(temp, 0, Math.min(1024, response.remaining()));
+  }
+
+  public synchronized void update(IPHeader ipHeader, TCPDatagram tcpDatagram, boolean value) {
+    isFirst = value;
+    if(isFirst) { requestHeader = ipHeader; requestTCPDatagram = tcpDatagram; return; }
+    else forwarder.forwardResponse(ipHeader, data_transfer(tcpDatagram));
+  }
+
+  private TCPDatagram data_transfer(TCPDatagram tcpDatagram) {
+    TCPHeader newTCPHeader = TCPHeader.createDATA(tcpDatagram, true);
+    return new TCPDatagram(newTCPHeader, getResponse().array());
   }
 }

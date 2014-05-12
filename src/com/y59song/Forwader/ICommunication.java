@@ -10,6 +10,5 @@ import java.net.InetAddress;
 public interface ICommunication {
   public void setup(InetAddress dstAddress, int dstPort);
   public void send(IPPayLoad payload);
-  public byte[] receive();
   public void close();
 }
