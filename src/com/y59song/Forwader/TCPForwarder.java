@@ -82,21 +82,6 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
         receiver.update(newIPHeader, tcpDatagram, false);
       }
     }
-    /*
-    } else if((flag & TCPHeader.ACK) != 0) {
-      if (status == Status.HAND_SHAKE) {
-        setup(ipDatagram.header().getDstAddress(), tcpDatagram.getDstPort());
-        status = Status.DATA;
-      } else if (tcpDatagram.dataLength() != 0) {
-        newTCPDatagram = data_ack(tcpDatagram);
-        send(tcpDatagram);
-      } else if (status != Status.END) {
-        if (response == null || response.position() == response.limit()) return;
-        newTCPDatagram = data_transfer(tcpDatagram);
-        expected_ack = ((TCPHeader) newTCPDatagram.header()).getSeq_num() + newTCPDatagram.dataLength();
-      }
-    }
-    */
   }
 
   @Override
@@ -117,18 +102,6 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
   private TCPDatagram data_ack(TCPDatagram tcpDatagram) {
     TCPHeader newTCPHeader = TCPHeader.createACK(tcpDatagram);
     return new TCPDatagram(newTCPHeader, null);
-  }
-
-  private TCPDatagram data_transfer(TCPDatagram tcpDatagram) {
-    //Log.d(TAG, " Request : " + ByteOperations.byteArrayToString(datagram.data));
-    TCPHeader ackHeader = (TCPHeader) tcpDatagram.header();
-    int offset = response.position() - (expected_ack - ackHeader.getAck_num());
-    //Log.d(TAG, " Response : " + ByteOperations.byteArrayToString(response));
-    int begin = offset, end = Math.min(offset + 1024, response.limit());
-    TCPHeader newTCPHeader = TCPHeader.createDATA(tcpDatagram, begin == end);
-    response.position(end);
-    expected_ack = expected_ack + end - begin;
-    return new TCPDatagram(newTCPHeader, response.array(), begin, end);
   }
 
   private TCPDatagram end_ack(TCPDatagram tcpDatagram) {

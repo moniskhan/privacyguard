@@ -31,7 +31,7 @@ public abstract class AbsForwarder extends Thread {
       public void handleMessage(Message msg) {
         switch(msg.what) {
           case FORWARD: forward((IPDatagram) msg.obj); break;
-          case RECEIVE: receive((ByteBuffer) msg.obj); break;
+          //case RECEIVE: receive((ByteBuffer) msg.obj); break;
           default: break;
         }
       }
@@ -43,7 +43,7 @@ public abstract class AbsForwarder extends Thread {
 
   protected abstract void receive (ByteBuffer response);
 
-  public void send(IPDatagram ip) {
+  public void request(IPDatagram ip) {
     if(mHandler == null) return;
     Message msg = Message.obtain();
     msg.what = FORWARD;
@@ -51,13 +51,15 @@ public abstract class AbsForwarder extends Thread {
     mHandler.sendMessage(msg);
   }
 
-  public void send(ByteBuffer response) {
+  /*
+  public void respond(ByteBuffer response) {
     if(mHandler == null) return;
     Message msg = Message.obtain();
     msg.what = RECEIVE;
     msg.obj = response;
     mHandler.sendMessage(msg);
   }
+  */
 
   public void forwardResponse(IPHeader ipHeader, IPPayLoad datagram) {
     if(ipHeader == null || datagram == null) return;

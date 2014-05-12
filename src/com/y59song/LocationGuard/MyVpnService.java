@@ -62,7 +62,7 @@ public class MyVpnService extends VpnService implements Runnable{
             temp.start();
             portToForwarder.put(port, temp);
           } else temp = portToForwarder.get(port);
-          temp.send(ip);
+          temp.request(ip);
         }
       }
     } catch (IOException e) {

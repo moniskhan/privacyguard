@@ -9,6 +9,7 @@ import com.y59song.Network.TCP.TCPHeader;
 import java.io.DataInputStream;
 import java.net.Socket;
 import java.nio.ByteBuffer;
+import java.util.LinkedList;
 import java.util.Queue;
 
 /**
@@ -25,6 +26,7 @@ public class TCPReceiver implements Runnable {
   public TCPReceiver(Socket socket, TCPForwarder forwarder) {
     this.socket = socket;
     this.forwarder = forwarder;
+    this.queue = new LinkedList<ByteBuffer>();
   }
 
   @Override
@@ -33,7 +35,6 @@ public class TCPReceiver implements Runnable {
       DataInputStream inputStream = new DataInputStream(socket.getInputStream());
       while(true) {
         ByteBuffer response = ByteBuffer.allocate(32767);
-        if (inputStream == null) inputStream = new DataInputStream(socket.getInputStream());
         int length = inputStream.read(response.array());
         Log.d("TCP", "" + length);
         if(length > 0) {
