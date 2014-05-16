@@ -38,12 +38,10 @@ public class TCPReceiver implements Runnable {
         int length = inputStream.read(response.array());
         Log.d("TCP", "" + length);
         if(length > 0) {
+          byte[] temp = new byte[length];
           response.limit(length);
-          queue.add(response);
-        }
-        if(isFirst && !queue.isEmpty()) {
-          isFirst = false;
-          forwarder.forwardResponse(requestHeader, data_transfer(requestTCPDatagram));
+          response.get(temp);
+          forwarder.receive(temp);
         }
       }
     } catch (Exception e) {

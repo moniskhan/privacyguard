@@ -4,17 +4,16 @@ import com.y59song.Forwader.Receiver.TCPReceiver;
 import com.y59song.LocationGuard.MyVpnService;
 import com.y59song.Network.IP.IPDatagram;
 import com.y59song.Network.IP.IPHeader;
-import com.y59song.Network.IPPayLoad;
+import com.y59song.Network.IP.IPPayLoad;
 import com.y59song.Network.TCP.TCPDatagram;
 import com.y59song.Network.TCP.TCPHeader;
+import com.y59song.Network.TCPConnectionInfo;
 
-import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
 /**
@@ -24,23 +23,19 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
   private final String TAG = "TCPForwarder";
   private Socket socket;
   private IPHeader newIPHeader;
-  private DataInputStream inputStream;
   private DataOutputStream outputStream;
-  private int expected_ack, exptected_seq;
-  private boolean transEnd = false;
-  private ByteBuffer response;
   private TCPReceiver receiver;
+  private TCPConnectionInfo conn_info;
 
   public enum Status {
-    END, DATA, HAND_SHAKE;
+    END_CLIENT, END_SERVER, END, DATA, HAND_SHAKE, LISTEN, SYN_ACK_SENT;
   }
 
   private Status status;
 
   public TCPForwarder(MyVpnService vpnService) {
     super(vpnService);
-    response = ByteBuffer.allocate(32767);
-    status = Status.HAND_SHAKE;
+    status = Status.LISTEN;
   }
 
   /*
@@ -51,19 +46,18 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
    * step 5 : update the datagram's checksum
    * step 6 : combine the tcp datagram and the ip datagram, update the ip header
    */
-  @Override
-  protected void forward (IPDatagram ipDatagram) {
+  protected void forward_2 (IPDatagram ipDatagram) {
     newIPHeader = ipDatagram.header().reverse();
     TCPDatagram tcpDatagram = (TCPDatagram) ipDatagram.payLoad(), newTCPDatagram = null;
     TCPHeader tcpHeader = (TCPHeader) tcpDatagram.header();
     byte flag = tcpHeader.getFlag();
+
     if((flag & TCPHeader.SYN) != 0) {
       status = Status.HAND_SHAKE;
       newTCPDatagram = handshake(tcpDatagram);
       forwardResponse(newIPHeader, newTCPDatagram);
-      expected_ack = ((TCPHeader) newTCPDatagram.header()).getSeq_num() + 1;
     } else if((flag & TCPHeader.FIN) != 0) {
-      status = Status.END;
+      status = Status.END_CLIENT;
       newTCPDatagram = end_ack(newTCPDatagram);
       forwardResponse(newIPHeader, newTCPDatagram);
       newTCPDatagram = end_fin_ack(tcpDatagram);
@@ -84,14 +78,68 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
     }
   }
 
-  @Override
-  protected void receive (ByteBuffer response) {
-    if(this.response.position() == this.response.limit())
-      this.response = response;
-    else {
-      this.response.put(response);
-      // TODO
+  protected void forward (IPDatagram ipDatagram) {
+    byte flag = 0;
+    int len = 0;
+    if(ipDatagram != null) {
+      flag = ((TCPHeader)ipDatagram.payLoad().header()).getFlag();
+      len = ipDatagram.payLoad().virtualLength();
+      if(conn_info == null) conn_info = new TCPConnectionInfo(ipDatagram);
+      conn_info.increaseAck(len);
     }
+    switch(status) {
+      case LISTEN:
+        assert(flag == TCPHeader.SYN);
+        conn_info.increaseSeq(
+          forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.SYNACK), null))
+        );
+        status = Status.SYN_ACK_SENT;
+        break;
+      case SYN_ACK_SENT:
+        if(flag == TCPHeader.SYN) {
+          status = Status.LISTEN;
+          forward(ipDatagram);
+        } else {
+          assert(flag == TCPHeader.ACK);
+          status = Status.DATA;
+          conn_info.setup(this);
+        }
+        break;
+      case DATA:
+        conn_info.increaseSeq(
+          forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.ACK), null))
+        );
+        if((flag & TCPHeader.FIN) != 0) {
+          conn_info.increaseSeq(
+            forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.FINACK), null))
+          );
+          close();
+          status = Status.END;
+        }
+        break;
+      case END_CLIENT:
+        assert(flag == TCPHeader.FINACK);
+        conn_info.increaseSeq(
+          forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.ACK), null))
+        );
+        status = Status.END;
+        break;
+      case END_SERVER:
+        conn_info.increaseSeq(
+          forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.FINACK), null))
+        );
+        close();
+        status = Status.END_CLIENT;
+      default:
+        break;
+    }
+  }
+
+  @Override
+  public void receive (byte[] response) {
+    conn_info.increaseSeq(
+      forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.DATA), response))
+    );
   }
 
   private TCPDatagram handshake(TCPDatagram tcpDatagram) {
@@ -117,6 +165,10 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
 
   @Override
   public void send(IPPayLoad payLoad) {
+    if(socket != null && !socket.isConnected()) {
+      status = Status.END_SERVER;
+      forward(null);
+    }
     try {
       if(outputStream == null) outputStream = new DataOutputStream(socket.getOutputStream());
       outputStream.write(payLoad.data());
@@ -128,6 +180,8 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
 
   @Override
   public void close() {
+    conn_info = null;
+    if(socket == null) return;
     try{
       if(!socket.isInputShutdown()) socket.shutdownInput();
       if(!socket.isOutputShutdown()) socket.shutdownOutput();

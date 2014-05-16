@@ -1,7 +1,7 @@
 package com.y59song.Network.UDP;
 
 import android.util.Log;
-import com.y59song.Network.IPPayLoad;
+import com.y59song.Network.IP.IPPayLoad;
 import com.y59song.Utilities.ByteOperations;
 
 import java.util.Arrays;

@@ -1,6 +1,6 @@
 package com.y59song.Network.IP;
 
-import com.y59song.Network.IPPayLoad;
+import com.y59song.Network.IP.IPPayLoad;
 import com.y59song.Network.TCP.TCPDatagram;
 import com.y59song.Network.UDP.UDPDatagram;
 import com.y59song.Utilities.ByteOperations;

@@ -3,7 +3,7 @@ package com.y59song.Forwader;
 import com.y59song.LocationGuard.MyVpnService;
 import com.y59song.Network.IP.IPDatagram;
 import com.y59song.Network.IP.IPHeader;
-import com.y59song.Network.IPPayLoad;
+import com.y59song.Network.IP.IPPayLoad;
 import com.y59song.Network.UDP.UDPDatagram;
 import com.y59song.Network.UDP.UDPHeader;
 
@@ -42,7 +42,7 @@ public class UDPForwarder extends AbsForwarder implements ICommunication {
   }
 
   @Override
-  protected void receive(ByteBuffer response) {
+  protected void receive(byte[] response) {
   }
 
   @Override

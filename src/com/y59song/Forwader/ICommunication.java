@@ -1,6 +1,6 @@
 package com.y59song.Forwader;
 
-import com.y59song.Network.IPPayLoad;
+import com.y59song.Network.IP.IPPayLoad;
 
 import java.net.InetAddress;
 

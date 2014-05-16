@@ -1,6 +1,5 @@
-package com.y59song.Network;
+package com.y59song.Network.IP;
 
-import com.y59song.Network.IP.IPHeader;
 import com.y59song.Network.TransportHeader;
 import com.y59song.Utilities.ByteOperations;
 
@@ -27,6 +26,7 @@ public abstract class IPPayLoad {
   public int dataLength() {
     return data == null ? 0 : data.length;
   }
+  public int virtualLength() { return dataLength(); }
 
   protected byte[] getPseudoHeader(IPHeader ipHeader) {
     int length = length();

@@ -1,7 +1,7 @@
 package com.y59song.Network.TCP;
 
 import android.util.Log;
-import com.y59song.Network.IPPayLoad;
+import com.y59song.Network.IP.IPPayLoad;
 
 import java.util.Arrays;
 
@@ -34,5 +34,12 @@ public class TCPDatagram extends IPPayLoad {
         + header.getSrcPort() + " DstPort : " + header.getDstPort() + " Seq : " + ((TCPHeader)header).getSeq_num()
         + " Ack : " + ((TCPHeader)header).getAck_num()
         + " Data Length : " + dataLength());
+  }
+
+  @Override
+  public int virtualLength() {
+    byte flag = ((TCPHeader)header).getFlag();
+    if((flag & (TCPHeader.SYN | TCPHeader.FIN)) != 0) return 1;
+    else return this.dataLength();
   }
 }

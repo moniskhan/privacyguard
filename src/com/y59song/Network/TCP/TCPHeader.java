@@ -14,7 +14,9 @@ public class TCPHeader extends TransportHeader {
   private static final String TAG = "TCPHeader";
   public static final byte FIN = 0x01;
   public static final byte ACK = 0x10;
+  public static final byte FINACK = (byte)(FIN | ACK);
   public static final byte SYN = 0x02;
+  public static final byte SYNACK = (byte)(SYN | ACK);
   public static final byte PSH = 0x08;
   public static final byte DATA = 0x18;
 
@@ -74,17 +76,17 @@ public class TCPHeader extends TransportHeader {
     return new TCPHeader(reverseData);
   }
 
-  private void setAck_num(int ack) {
+  public void setAck_num(int ack) {
     byte[] bytes = ByteBuffer.allocate(4).putInt(ack).array();
     System.arraycopy(bytes, 0, data, 8, 4);
   }
 
-  private void setSeq_num(int seq) {
+  public void setSeq_num(int seq) {
     byte[] bytes = ByteBuffer.allocate(4).putInt(seq).array();
     System.arraycopy(bytes, 0, data, 4, 4);
   }
 
-  private void setFlag(byte flag) {
+  public void setFlag(byte flag) {
     data[13] = flag;
   }
 

@@ -6,10 +6,9 @@ import android.os.Message;
 import com.y59song.LocationGuard.MyVpnService;
 import com.y59song.Network.IP.IPDatagram;
 import com.y59song.Network.IP.IPHeader;
-import com.y59song.Network.IPPayLoad;
+import com.y59song.Network.IP.IPPayLoad;
 
 import java.net.InetAddress;
-import java.nio.ByteBuffer;
 
 /**
  * Created by frank on 2014-03-29.
@@ -41,7 +40,7 @@ public abstract class AbsForwarder extends Thread {
 
   protected abstract void forward (IPDatagram ip);
 
-  protected abstract void receive (ByteBuffer response);
+  protected abstract void receive (byte[] response);
 
   public void request(IPDatagram ip) {
     if(mHandler == null) return;
@@ -61,10 +60,11 @@ public abstract class AbsForwarder extends Thread {
   }
   */
 
-  public void forwardResponse(IPHeader ipHeader, IPPayLoad datagram) {
-    if(ipHeader == null || datagram == null) return;
+  public int forwardResponse(IPHeader ipHeader, IPPayLoad datagram) {
+    if(ipHeader == null || datagram == null) return 0;
     datagram.update(ipHeader); // set the checksum
     IPDatagram newIpDatagram = new IPDatagram(ipHeader, datagram); // set the ip datagram, will update the length and the checksum
     vpnService.fetchResponse(newIpDatagram.toByteArray());
+    return datagram.virtualLength();
   }
 }
