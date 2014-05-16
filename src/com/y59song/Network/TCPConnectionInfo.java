@@ -15,17 +15,17 @@ public class TCPConnectionInfo extends ConnectionInfo {
     ack = ((TCPHeader) ipDatagram.payLoad().header()).getSeq_num();
   }
 
-  public void setSeq(int seq) {
+  private void setSeq(int seq) {
     this.seq = seq;
     ((TCPHeader)responseTransHeader).setSeq_num(seq);
   }
 
-  public void setAck(int ack) {
+  private void setAck(int ack) {
     this.ack = ack;
     ((TCPHeader)responseTransHeader).setAck_num(ack);
   }
 
-  public void setFlag(byte flag) {
+  private void setFlag(byte flag) {
     ((TCPHeader)responseTransHeader).setFlag(flag);
   }
 

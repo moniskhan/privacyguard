@@ -85,7 +85,7 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
       flag = ((TCPHeader)ipDatagram.payLoad().header()).getFlag();
       len = ipDatagram.payLoad().virtualLength();
       if(conn_info == null) conn_info = new TCPConnectionInfo(ipDatagram);
-      conn_info.increaseAck(len);
+      //conn_info.increaseAck(len);
     }
     switch(status) {
       case LISTEN:
@@ -106,15 +106,16 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
         }
         break;
       case DATA:
-        conn_info.increaseSeq(
-          forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.ACK), null))
-        );
+        int rlen = forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.ACK), null));
+        conn_info.increaseSeq(rlen);
         if((flag & TCPHeader.FIN) != 0) {
           conn_info.increaseSeq(
             forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.FINACK), null))
           );
           close();
           status = Status.END;
+        } else if(rlen > 0) {
+          send(ipDatagram.payLoad());
         }
         break;
       case END_CLIENT:
