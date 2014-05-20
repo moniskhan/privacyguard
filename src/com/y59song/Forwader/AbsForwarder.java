@@ -1,8 +1,6 @@
 package com.y59song.Forwader;
 
 import android.os.Handler;
-import android.os.Looper;
-import android.os.Message;
 import com.y59song.LocationGuard.MyVpnService;
 import com.y59song.Network.IP.IPDatagram;
 import com.y59song.Network.IP.IPHeader;
@@ -13,7 +11,7 @@ import java.net.InetAddress;
 /**
  * Created by frank on 2014-03-29.
  */
-public abstract class AbsForwarder extends Thread {
+public abstract class AbsForwarder { //} extends Thread {
   public static final int FORWARD = 0, RECEIVE = 1;
   protected InetAddress dstAddress;
   protected int dstPort;
@@ -22,6 +20,7 @@ public abstract class AbsForwarder extends Thread {
   public AbsForwarder(MyVpnService vpnService) {
     this.vpnService = vpnService;
   }
+  /*
   @Override
   public synchronized void run() {
     Looper.prepare();
@@ -37,17 +36,21 @@ public abstract class AbsForwarder extends Thread {
     };
     Looper.loop();
   }
+  */
 
   protected abstract void forward (IPDatagram ip);
 
   protected abstract void receive (byte[] response);
 
   public void request(IPDatagram ip) {
+    forward(ip);
+    /*
     if(mHandler == null) return;
     Message msg = Message.obtain();
     msg.what = FORWARD;
     msg.obj = ip;
     mHandler.sendMessage(msg);
+    */
   }
 
   /*

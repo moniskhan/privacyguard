@@ -3,6 +3,7 @@ package com.y59song.LocationGuard;
 import android.content.Intent;
 import android.net.VpnService;
 import android.os.ParcelFileDescriptor;
+import android.util.Log;
 import com.y59song.Forwader.AbsForwarder;
 import com.y59song.Forwader.ForwarderBuilder;
 import com.y59song.Network.IP.IPDatagram;
@@ -56,10 +57,11 @@ public class MyVpnService extends VpnService implements Runnable{
           packet.clear();
           if(ip == null) continue;
           int port = ip.payLoad().getSrcPort();
+          Log.d(TAG, "Port : " + ip.payLoad().getDstPort());
           AbsForwarder temp;
           if(!portToForwarder.containsKey(port)) {
             temp = ForwarderBuilder.build(ip.header().protocol(), this);
-            temp.start();
+            //temp.start();
             portToForwarder.put(port, temp);
           } else temp = portToForwarder.get(port);
           temp.request(ip);
@@ -104,10 +106,11 @@ public class MyVpnService extends VpnService implements Runnable{
     Builder b = new Builder();
     //b.addAddress("10.0.0.0", 28);
     b.addAddress(getLocalAddress(), 28);
-    //b.addRoute("0.0.0.0", 0);
+    b.addRoute("0.0.0.0", 0);
     //b.addRoute("8.8.8.8", 32);
     //b.addDnsServer("8.8.8.8");
-    b.addRoute("173.194.43.116", 32);
+    //b.addRoute("173.194.43.116", 32);
+    b.addRoute("173.194.43.0", 24);
     //b.addRoute("220.181.111.86", 32);
     //b.addRoute("129.42.38.1", 32);
     //b.addRoute("123.125.114.144", 32);

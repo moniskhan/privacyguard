@@ -29,7 +29,7 @@ public class TCPDatagram extends IPPayLoad {
   }
 
   public void debugInfo() {
-    if(header.getDstPort() == 80 || header.getSrcPort() == 80)
+    //if(header.getDstPort() == 80 || header.getSrcPort() == 80)
       Log.d(TAG, "Flag : " + (((TCPHeader)header).getFlag() & 0xFF) + " SrcPort : "
         + header.getSrcPort() + " DstPort : " + header.getDstPort() + " Seq : " + ((TCPHeader)header).getSeq_num()
         + " Ack : " + ((TCPHeader)header).getAck_num()

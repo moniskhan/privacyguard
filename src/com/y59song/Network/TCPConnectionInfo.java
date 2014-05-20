@@ -11,16 +11,16 @@ public class TCPConnectionInfo extends ConnectionInfo {
   public TCPConnectionInfo(IPDatagram ipDatagram) {
     super(ipDatagram);
     assert(protocol == IPDatagram.TCP);
-    seq = 1;
-    ack = ((TCPHeader) ipDatagram.payLoad().header()).getSeq_num();
+    setSeq(1);
+    setAck(((TCPHeader) ipDatagram.payLoad().header()).getSeq_num());
   }
 
-  private void setSeq(int seq) {
+  private synchronized void setSeq(int seq) {
     this.seq = seq;
     ((TCPHeader)responseTransHeader).setSeq_num(seq);
   }
 
-  private void setAck(int ack) {
+  private synchronized void setAck(int ack) {
     this.ack = ack;
     ((TCPHeader)responseTransHeader).setAck_num(ack);
   }

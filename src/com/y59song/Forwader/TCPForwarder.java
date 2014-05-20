@@ -1,5 +1,6 @@
 package com.y59song.Forwader;
 
+import android.util.Log;
 import com.y59song.Forwader.Receiver.TCPReceiver;
 import com.y59song.LocationGuard.MyVpnService;
 import com.y59song.Network.IP.IPDatagram;
@@ -28,7 +29,7 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
   private TCPConnectionInfo conn_info;
 
   public enum Status {
-    END_CLIENT, END_SERVER, END, DATA, HAND_SHAKE, LISTEN, SYN_ACK_SENT;
+    END_CLIENT, END_SERVER, END, DATA, LISTEN, SYN_ACK_SENT;
   }
 
   private Status status;
@@ -46,47 +47,16 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
    * step 5 : update the datagram's checksum
    * step 6 : combine the tcp datagram and the ip datagram, update the ip header
    */
-  protected void forward_2 (IPDatagram ipDatagram) {
-    newIPHeader = ipDatagram.header().reverse();
-    TCPDatagram tcpDatagram = (TCPDatagram) ipDatagram.payLoad(), newTCPDatagram = null;
-    TCPHeader tcpHeader = (TCPHeader) tcpDatagram.header();
-    byte flag = tcpHeader.getFlag();
-
-    if((flag & TCPHeader.SYN) != 0) {
-      status = Status.HAND_SHAKE;
-      newTCPDatagram = handshake(tcpDatagram);
-      forwardResponse(newIPHeader, newTCPDatagram);
-    } else if((flag & TCPHeader.FIN) != 0) {
-      status = Status.END_CLIENT;
-      newTCPDatagram = end_ack(newTCPDatagram);
-      forwardResponse(newIPHeader, newTCPDatagram);
-      newTCPDatagram = end_fin_ack(tcpDatagram);
-      forwardResponse(newIPHeader, newTCPDatagram);
-      close();
-    } else if((flag & TCPHeader.PSH) != 0) {
-      newTCPDatagram = data_ack(tcpDatagram);
-      forwardResponse(newIPHeader, newTCPDatagram);
-      send(tcpDatagram);
-      receiver.update(newIPHeader, tcpDatagram, true);
-    } else { // ACK
-      if(status == Status.HAND_SHAKE) {
-        setup(ipDatagram.header().getDstAddress(), tcpDatagram.getDstPort());
-        status = Status.DATA;
-      } else if(status == Status.DATA) {
-        receiver.update(newIPHeader, tcpDatagram, false);
-      }
-    }
-  }
-
   protected void forward (IPDatagram ipDatagram) {
     byte flag = 0;
-    int len = 0;
+    int len = 0, rlen = 0;
     if(ipDatagram != null) {
       flag = ((TCPHeader)ipDatagram.payLoad().header()).getFlag();
       len = ipDatagram.payLoad().virtualLength();
+      rlen = ipDatagram.payLoad().dataLength();
       if(conn_info == null) conn_info = new TCPConnectionInfo(ipDatagram);
-      //conn_info.increaseAck(len);
     }
+    Log.d(TAG, "" + status);
     switch(status) {
       case LISTEN:
         assert(flag == TCPHeader.SYN);
@@ -106,16 +76,17 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
         }
         break;
       case DATA:
-        int rlen = forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.ACK), null));
-        conn_info.increaseSeq(rlen);
-        if((flag & TCPHeader.FIN) != 0) {
+        if(rlen > 0) {
+          conn_info.increaseSeq(
+            forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.ACK), null))
+          );
+          send(ipDatagram.payLoad());
+        } else if((flag & TCPHeader.FIN) != 0) {
           conn_info.increaseSeq(
             forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.FINACK), null))
           );
           close();
           status = Status.END;
-        } else if(rlen > 0) {
-          send(ipDatagram.payLoad());
         }
         break;
       case END_CLIENT:
@@ -142,27 +113,6 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
       forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.DATA), response))
     );
   }
-
-  private TCPDatagram handshake(TCPDatagram tcpDatagram) {
-    TCPHeader newTCPHeader = TCPHeader.createSYNACK(tcpDatagram); // set syn, ack, syn_num, ack_num; reversed
-    return new TCPDatagram(newTCPHeader, null);
-  }
-
-  private TCPDatagram data_ack(TCPDatagram tcpDatagram) {
-    TCPHeader newTCPHeader = TCPHeader.createACK(tcpDatagram);
-    return new TCPDatagram(newTCPHeader, null);
-  }
-
-  private TCPDatagram end_ack(TCPDatagram tcpDatagram) {
-    TCPHeader newTCPHeader = TCPHeader.createACK(tcpDatagram);
-    return new TCPDatagram(newTCPHeader, null);
-  }
-
-  private TCPDatagram end_fin_ack(TCPDatagram tcpDatagram) {
-    TCPHeader newTCPHeader = TCPHeader.createFINACK(tcpDatagram);
-    return new TCPDatagram(newTCPHeader, null);
-  }
-
 
   @Override
   public void send(IPPayLoad payLoad) {
