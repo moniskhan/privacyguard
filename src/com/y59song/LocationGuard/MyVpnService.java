@@ -75,6 +75,7 @@ public class MyVpnService extends VpnService implements Runnable{
   public synchronized void fetchResponse(byte[] response) {
     if(localOut == null || response == null) return;
     try {
+      Log.d(TAG, "" + response.length);
       localOut.write(response);
       localOut.flush();
     } catch (IOException e) {
@@ -106,8 +107,8 @@ public class MyVpnService extends VpnService implements Runnable{
     //b.addRoute("0.0.0.0", 0);
     //b.addRoute("8.8.8.8", 32);
     b.addDnsServer("8.8.8.8");
-    b.addRoute("123.125.114.0", 24);
-    b.addRoute("173.194.43.116", 32);
+    b.addRoute("220.181.37.55", 32);
+    b.addRoute("173.194.43.0", 24);
     //b.addRoute("71.19.173.0", 24);
     b.setMtu(1500);
     mInterface = b.establish();

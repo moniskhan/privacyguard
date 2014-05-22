@@ -82,7 +82,7 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
       case DATA:
         //int ack = ((TCPHeader)ipDatagram.payLoad().header()).getAck_num();
         if(rlen > 0) {
-          conn_info.reset(ipDatagram);
+          //conn_info.reset(ipDatagram);
           conn_info.increaseSeq(
             forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.ACK), null))
           );
@@ -96,9 +96,9 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
           );
           close();
           status = Status.END;
-        //} else { // ACK for data
-        //  if(conn_info.setSeq(ack))
-        //    receiver.fetch(ack);
+        } else if((flag & TCPHeader.RST) != 0) {
+          close();
+          status = Status.END;
         }
         break;
       case END_CLIENT:
@@ -114,6 +114,9 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
         );
         close();
         status = Status.END_CLIENT;
+        break;
+      case END:
+        status = Status.LISTEN;
       default:
         break;
     }
@@ -121,6 +124,7 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
 
   @Override
   public void receive (byte[] response) {
+    if(conn_info == null) return;
     conn_info.increaseSeq(
       forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.DATA), response))
     );
@@ -150,6 +154,7 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
   @Override
   public void close() {
     conn_info = null;
+    //status = Status.LISTEN;
     if(socket == null) return;
     try{
       if(!socket.isInputShutdown()) socket.shutdownInput();

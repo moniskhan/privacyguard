@@ -1,5 +1,6 @@
 package com.y59song.Network;
 
+import android.util.Log;
 import com.y59song.Network.IP.IPDatagram;
 import com.y59song.Network.TCP.TCPHeader;
 
@@ -7,6 +8,7 @@ import com.y59song.Network.TCP.TCPHeader;
  * Created by y59song on 16/05/14.
  */
 public class TCPConnectionInfo extends ConnectionInfo {
+  private static final String TAG = "TCPConnectionInfo";
   public int seq, ack;
   public TCPConnectionInfo(IPDatagram ipDatagram) {
     super(ipDatagram);
@@ -42,6 +44,7 @@ public class TCPConnectionInfo extends ConnectionInfo {
   }
 
   public void increaseSeq(int inc) {
+    Log.d(TAG, "increse " + inc);
     setSeq(seq + inc);
   }
 

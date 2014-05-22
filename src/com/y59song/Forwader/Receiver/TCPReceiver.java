@@ -23,9 +23,9 @@ public class TCPReceiver implements Runnable {
   private Selector selector;
   private TCPForwarder forwarder;
   private LinkedList<ByteBuffer> responses = new LinkedList<ByteBuffer>();
-  private ByteBuffer msg = ByteBuffer.allocate(65536);
   private int count = 0;
   private final int limit = 2048;
+  private ByteBuffer msg = ByteBuffer.allocate(limit);
 
   public TCPReceiver(Socket socket, TCPForwarder forwarder, Selector selector) {
     this.socket = socket;
@@ -62,10 +62,15 @@ public class TCPReceiver implements Runnable {
         e.printStackTrace();
       }
       Iterator<SelectionKey> iterator = selector.selectedKeys().iterator();
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
       while(iterator.hasNext()) {
         SelectionKey key = iterator.next();
         iterator.remove();
-        if(key.isReadable()) {
+        if(key.isValid() && key.isReadable()) {
           try {
             msg.clear();
             int length = socketChannel.read(msg);
