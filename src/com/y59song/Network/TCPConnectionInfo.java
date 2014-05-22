@@ -32,7 +32,7 @@ public class TCPConnectionInfo extends ConnectionInfo {
   public void reset(IPDatagram ipDatagram) {
     super.reset(ipDatagram);
     assert(protocol == IPDatagram.TCP);
-    setSeq(1);
+    setSeq(((TCPHeader) ipDatagram.payLoad().header()).getAck_num());
     //Log.d("TCPConnectionInfo", "" + this.seq + "," + ((TCPHeader)responseTransHeader).getSeq_num());
     setAck(((TCPHeader) ipDatagram.payLoad().header()).getSeq_num());
   }

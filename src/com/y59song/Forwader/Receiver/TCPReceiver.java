@@ -4,27 +4,37 @@ import android.util.Log;
 import com.y59song.Forwader.TCPForwarder;
 
 import java.io.DataInputStream;
+import java.io.IOException;
 import java.net.Socket;
 import java.nio.ByteBuffer;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
+import java.nio.channels.SocketChannel;
+import java.util.Iterator;
 import java.util.LinkedList;
 
 /**
  * Created by y59song on 03/04/14.
  */
 public class TCPReceiver implements Runnable {
+  private final String TAG = "TCPReceiver";
   private Socket socket;
+  private SocketChannel socketChannel;
+  private Selector selector;
   private TCPForwarder forwarder;
   private LinkedList<ByteBuffer> responses = new LinkedList<ByteBuffer>();
+  private ByteBuffer msg = ByteBuffer.allocate(65536);
   private int count = 0;
   private final int limit = 2048;
 
-  public TCPReceiver(Socket socket, TCPForwarder forwarder) {
+  public TCPReceiver(Socket socket, TCPForwarder forwarder, Selector selector) {
     this.socket = socket;
+    this.socketChannel = socket.getChannel();
     this.forwarder = forwarder;
+    this.selector = selector;
   }
 
-  @Override
-  public void run() {
+  public void run2() {
     try {
       DataInputStream inputStream = new DataInputStream(socket.getInputStream());
       while(true) {
@@ -40,6 +50,36 @@ public class TCPReceiver implements Runnable {
       }
     } catch (Exception e) {
       e.printStackTrace();
+    }
+  }
+
+  @Override
+  public void run() {
+    while(true) {
+      try {
+        selector.select(0);
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+      Iterator<SelectionKey> iterator = selector.selectedKeys().iterator();
+      while(iterator.hasNext()) {
+        SelectionKey key = iterator.next();
+        iterator.remove();
+        if(key.isReadable()) {
+          try {
+            msg.clear();
+            int length = socketChannel.read(msg);
+            if(length <= 0) continue;
+            msg.flip();
+            Log.d(TAG, "" + msg.remaining() + ", " + length);
+            byte[] temp = new byte[length];
+            msg.get(temp);
+            forwarder.receive(temp);
+          } catch (IOException e) {
+            e.printStackTrace();
+          }
+        }
+      }
     }
   }
 
