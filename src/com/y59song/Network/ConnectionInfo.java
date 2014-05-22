@@ -18,13 +18,7 @@ public class ConnectionInfo {
   protected TransportHeader responseTransHeader;
 
   public ConnectionInfo(IPDatagram ipDatagram) {
-    this.clientAddress = ipDatagram.header().getSrcAddress();
-    this.serverAddress = ipDatagram.header().getDstAddress();
-    this.clientPort = ipDatagram.payLoad().getSrcPort();
-    this.serverPort = ipDatagram.payLoad().getDstPort();
-    this.protocol = ipDatagram.header().protocol();
-    this.responseIPHeader = ipDatagram.header().reverse();
-    this.responseTransHeader = ipDatagram.payLoad().header().reverse();
+    reset(ipDatagram);
   }
 
   public IPHeader getIPHeader() {
@@ -33,6 +27,16 @@ public class ConnectionInfo {
 
   public TransportHeader getTransHeader() {
     return responseTransHeader;
+  }
+
+  public void reset(IPDatagram ipDatagram) {
+    this.clientAddress = ipDatagram.header().getSrcAddress();
+    this.serverAddress = ipDatagram.header().getDstAddress();
+    this.clientPort = ipDatagram.payLoad().getSrcPort();
+    this.serverPort = ipDatagram.payLoad().getDstPort();
+    this.protocol = ipDatagram.header().protocol();
+    this.responseIPHeader = ipDatagram.header().reverse();
+    this.responseTransHeader = ipDatagram.payLoad().header().reverse();
   }
 
   public void setup(ICommunication forwarder) {

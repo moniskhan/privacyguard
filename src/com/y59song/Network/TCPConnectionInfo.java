@@ -7,22 +7,34 @@ import com.y59song.Network.TCP.TCPHeader;
  * Created by y59song on 16/05/14.
  */
 public class TCPConnectionInfo extends ConnectionInfo {
-  private int seq, ack;
+  public int seq, ack;
   public TCPConnectionInfo(IPDatagram ipDatagram) {
     super(ipDatagram);
-    assert(protocol == IPDatagram.TCP);
-    setSeq(1);
-    setAck(((TCPHeader) ipDatagram.payLoad().header()).getSeq_num());
+    reset(ipDatagram);
   }
 
-  private synchronized void setSeq(int seq) {
+  public synchronized boolean setSeq(int seq) {
+    //if(this.seq == seq) return false;
     this.seq = seq;
     ((TCPHeader)responseTransHeader).setSeq_num(seq);
+    //Log.d("TCPConnectionInfo setSeq", "" + this.seq + "," + ((TCPHeader)responseTransHeader).getSeq_num());
+    return true;
   }
 
-  private synchronized void setAck(int ack) {
+  public synchronized boolean setAck(int ack) {
+    //if(this.ack == ack) return false;
     this.ack = ack;
     ((TCPHeader)responseTransHeader).setAck_num(ack);
+    return true;
+  }
+
+  @Override
+  public void reset(IPDatagram ipDatagram) {
+    super.reset(ipDatagram);
+    assert(protocol == IPDatagram.TCP);
+    setSeq(1);
+    //Log.d("TCPConnectionInfo", "" + this.seq + "," + ((TCPHeader)responseTransHeader).getSeq_num());
+    setAck(((TCPHeader) ipDatagram.payLoad().header()).getSeq_num());
   }
 
   private void setFlag(byte flag) {

@@ -18,7 +18,7 @@ public class TCPHeader extends TransportHeader {
   public static final byte SYN = 0x02;
   public static final byte SYNACK = (byte)(SYN | ACK);
   public static final byte PSH = 0x08;
-  public static final byte DATA = 0x18;
+  public static final byte DATA = (byte)(PSH | ACK);
 
   public TCPHeader(byte[] data) {
     super(data);

@@ -11,7 +11,7 @@ import java.net.InetAddress;
 /**
  * Created by frank on 2014-03-29.
  */
-public abstract class AbsForwarder { //} extends Thread {
+public abstract class AbsForwarder {//} extends Thread {
   public static final int FORWARD = 0, RECEIVE = 1;
   protected InetAddress dstAddress;
   protected int dstPort;
@@ -20,6 +20,7 @@ public abstract class AbsForwarder { //} extends Thread {
   public AbsForwarder(MyVpnService vpnService) {
     this.vpnService = vpnService;
   }
+
   /*
   @Override
   public synchronized void run() {
@@ -44,13 +45,13 @@ public abstract class AbsForwarder { //} extends Thread {
 
   public void request(IPDatagram ip) {
     forward(ip);
-    /*
+/*
     if(mHandler == null) return;
     Message msg = Message.obtain();
     msg.what = FORWARD;
     msg.obj = ip;
     mHandler.sendMessage(msg);
-    */
+*/
   }
 
   /*

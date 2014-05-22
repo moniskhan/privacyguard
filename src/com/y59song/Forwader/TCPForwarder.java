@@ -48,18 +48,20 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
    * step 6 : combine the tcp datagram and the ip datagram, update the ip header
    */
   protected void forward (IPDatagram ipDatagram) {
-    byte flag = 0;
-    int len = 0, rlen = 0;
+    byte flag;
+    int len, rlen;
     if(ipDatagram != null) {
       flag = ((TCPHeader)ipDatagram.payLoad().header()).getFlag();
       len = ipDatagram.payLoad().virtualLength();
       rlen = ipDatagram.payLoad().dataLength();
       if(conn_info == null) conn_info = new TCPConnectionInfo(ipDatagram);
-    }
+    } else return;
     Log.d(TAG, "" + status);
     switch(status) {
       case LISTEN:
         assert(flag == TCPHeader.SYN);
+        conn_info.reset(ipDatagram);
+        //Log.d(TAG, "Seq : " + conn_info.seq);
         conn_info.increaseSeq(
           forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.SYNACK), null))
         );
@@ -76,6 +78,7 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
         }
         break;
       case DATA:
+        //int ack = ((TCPHeader)ipDatagram.payLoad().header()).getAck_num();
         if(rlen > 0) {
           conn_info.increaseSeq(
             forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.ACK), null))
@@ -83,10 +86,16 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
           send(ipDatagram.payLoad());
         } else if((flag & TCPHeader.FIN) != 0) {
           conn_info.increaseSeq(
+            forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.ACK), null))
+          );
+          conn_info.increaseSeq(
             forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.FINACK), null))
           );
           close();
           status = Status.END;
+        //} else { // ACK for data
+        //  if(conn_info.setSeq(ack))
+        //    receiver.fetch(ack);
         }
         break;
       case END_CLIENT:
