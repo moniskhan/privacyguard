@@ -57,11 +57,12 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
       len = ipDatagram.payLoad().virtualLength();
       rlen = ipDatagram.payLoad().dataLength();
       if(conn_info == null) conn_info = new TCPConnectionInfo(ipDatagram);
+      conn_info.setAck(((TCPHeader)ipDatagram.payLoad().header()).getSeq_num());
     } else return;
     Log.d(TAG, "" + status);
     switch(status) {
       case LISTEN:
-        assert(flag == TCPHeader.SYN);
+        if(flag != TCPHeader.SYN) return;
         conn_info.reset(ipDatagram);
         //Log.d(TAG, "Seq : " + conn_info.seq);
         conn_info.increaseSeq(
