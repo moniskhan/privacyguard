@@ -2,4 +2,5 @@
 <resources>
     <string name="app_name">LocationGuard</string>
     <string name="connect">Connect</string>
+    <string name="disconnect">Disconnect</string>
 </resources>

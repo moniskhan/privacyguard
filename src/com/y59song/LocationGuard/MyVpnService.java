@@ -102,8 +102,8 @@ public class MyVpnService extends VpnService implements Runnable{
 
   private void configure() {
     Builder b = new Builder();
-    //b.addAddress("10.0.0.0", 28);
-    b.addAddress(getLocalAddress(), 28);
+    b.addAddress("10.0.0.0", 28);
+    //b.addAddress(getLocalAddress(), 28);
     b.addRoute("0.0.0.0", 0);
     //b.addRoute("8.8.8.8", 32);
     b.addDnsServer("8.8.8.8");
@@ -112,5 +112,17 @@ public class MyVpnService extends VpnService implements Runnable{
     //b.addRoute("71.19.173.0", 24);
     b.setMtu(1500);
     mInterface = b.establish();
+  }
+
+  @Override
+  public void onDestroy() {
+    Log.d(TAG, "destroy");
+    super.onDestroy();
+    if(mInterface == null) return;
+    try {
+      mInterface.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
   }
 }

@@ -20,24 +20,24 @@ import java.util.Arrays;
 public class UDPForwarder extends AbsForwarder implements ICommunication {
   private static final String TAG = "UDPForwarder";
   private DatagramSocket socket;
+  private ByteBuffer packet;
+  private DatagramPacket response;
 
   public UDPForwarder(MyVpnService vpnService) {
     super(vpnService);
+    packet = ByteBuffer.allocate(32767);
+    response = new DatagramPacket(packet.array(), 32767);
   }
 
   @Override
   protected void forward(IPDatagram ipDatagram) {
     UDPDatagram udpDatagram = (UDPDatagram)ipDatagram.payLoad();
-    //Log.d(TAG, "Request : " + ByteOperations.byteArrayToString(udpDatagram.data()));
     setup(ipDatagram.header().getDstAddress(), ipDatagram.payLoad().getDstPort());
     send(udpDatagram);
 
-    byte[] response = receive();
-    //Log.d(TAG, "Response " + ByteOperations.byteArrayToString(response));
-    //Log.d(TAG, "Response : " + ByteOperations.byteArrayToString(response));
     IPHeader newIPHeader = ipDatagram.header().reverse();
     UDPHeader newUDPHeader = (UDPHeader)udpDatagram.header().reverse();
-    UDPDatagram newUDPDatagram = new UDPDatagram(newUDPHeader, response);
+    UDPDatagram newUDPDatagram = new UDPDatagram(newUDPHeader, receive());
     forwardResponse(newIPHeader, newUDPDatagram);
   }
 
@@ -68,9 +68,8 @@ public class UDPForwarder extends AbsForwarder implements ICommunication {
   }
 
   public byte[] receive() {
-    ByteBuffer packet = ByteBuffer.allocate(32767);
-    DatagramPacket response = new DatagramPacket(packet.array(), 32767);
     try {
+      packet.clear();
       socket.receive(response);
     } catch (IOException e) {
       e.printStackTrace();
