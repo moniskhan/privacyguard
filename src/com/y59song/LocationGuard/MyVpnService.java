@@ -45,11 +45,11 @@ public class MyVpnService extends VpnService implements Runnable{
     configure();
     localIn = new FileInputStream(mInterface.getFileDescriptor());
     localOut = new FileOutputStream(mInterface.getFileDescriptor());
-    ByteBuffer packet = ByteBuffer.allocate(32767);
+    ByteBuffer packet = ByteBuffer.allocate(2048);
 
     try {
       while (mInterface != null && mInterface.getFileDescriptor() != null && mInterface.getFileDescriptor().valid()) {
-        packet.clear();
+        //packet.clear();
         int length = localIn.read(packet.array());
         if(length > 0) {
           packet.limit(length);
@@ -65,9 +65,11 @@ public class MyVpnService extends VpnService implements Runnable{
             portToForwarder.put(port, temp);
           } else temp = portToForwarder.get(port);
           temp.request(ip);
-        }
+        } else Thread.sleep(100);
       }
     } catch (IOException e) {
+      e.printStackTrace();
+    } catch (InterruptedException e) {
       e.printStackTrace();
     }
   }
@@ -106,7 +108,7 @@ public class MyVpnService extends VpnService implements Runnable{
     //b.addAddress(getLocalAddress(), 28);
     b.addRoute("0.0.0.0", 0);
     //b.addRoute("8.8.8.8", 32);
-    b.addDnsServer("8.8.8.8");
+    //b.addDnsServer("8.8.8.8");
     //b.addRoute("220.181.37.55", 32);
     //b.addRoute("173.194.43.0", 24);
     //b.addRoute("71.19.173.0", 24);
