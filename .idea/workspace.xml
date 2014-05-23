@@ -142,10 +142,10 @@
   </component>
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="MyVpnService.java" pinned="false" current="true" current-in-tab="true">
+      <file leaf-file-name="MyVpnService.java" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/com/y59song/LocationGuard/MyVpnService.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.60175437" vertical-offset="1129" max-vertical-offset="1920">
+            <state vertical-scroll-proportion="0.0" vertical-offset="1158" max-vertical-offset="1920">
               <caret line="108" column="4" selection-start-line="108" selection-start-column="4" selection-end-line="108" selection-end-column="4" />
               <folding />
             </state>
@@ -222,13 +222,13 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="TCPReceiver.java" pinned="false" current="false" current-in-tab="false">
+      <file leaf-file-name="TCPReceiver.java" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/com/y59song/Forwader/Receiver/TCPReceiver.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0" vertical-offset="615" max-vertical-offset="1520">
-              <caret line="24" column="74" selection-start-line="24" selection-start-column="74" selection-end-line="24" selection-end-column="74" />
+            <state vertical-scroll-proportion="0.2982456" vertical-offset="198" max-vertical-offset="1216">
+              <caret line="33" column="3" selection-start-line="33" selection-start-column="3" selection-end-line="33" selection-end-column="3" />
               <folding>
-                <element signature="e#711#723#0" expanded="true" />
+                <element signature="e#679#691#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -291,9 +291,9 @@
         <option value="$PROJECT_DIR$/src/com/y59song/Forwader/TCPForwarder.java" />
         <option value="$PROJECT_DIR$/res/values/strings.xml" />
         <option value="$PROJECT_DIR$/src/com/y59song/LocationGuard/LocationGuard.java" />
-        <option value="$PROJECT_DIR$/src/com/y59song/Forwader/Receiver/TCPReceiver.java" />
         <option value="$PROJECT_DIR$/src/com/y59song/Forwader/UDPForwarder.java" />
         <option value="$PROJECT_DIR$/src/com/y59song/LocationGuard/MyVpnService.java" />
+        <option value="$PROJECT_DIR$/src/com/y59song/Forwader/Receiver/TCPReceiver.java" />
       </list>
     </option>
   </component>
@@ -1239,16 +1239,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/com/y59song/Forwader/Receiver/TCPReceiver.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0" vertical-offset="615" max-vertical-offset="1520">
-          <caret line="24" column="74" selection-start-line="24" selection-start-column="74" selection-end-line="24" selection-end-column="74" />
-          <folding>
-            <element signature="e#711#723#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/com/y59song/Forwader/UDPForwarder.java">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="1216">
@@ -1275,9 +1265,19 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/com/y59song/LocationGuard/MyVpnService.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.60175437" vertical-offset="1129" max-vertical-offset="1920">
+        <state vertical-scroll-proportion="0.0" vertical-offset="1158" max-vertical-offset="1920">
           <caret line="108" column="4" selection-start-line="108" selection-start-column="4" selection-end-line="108" selection-end-column="4" />
           <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/com/y59song/Forwader/Receiver/TCPReceiver.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.2982456" vertical-offset="198" max-vertical-offset="1216">
+          <caret line="33" column="3" selection-start-line="33" selection-start-column="3" selection-end-line="33" selection-end-column="3" />
+          <folding>
+            <element signature="e#679#691#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>

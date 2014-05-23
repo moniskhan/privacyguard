@@ -3,7 +3,6 @@ package com.y59song.Forwader.Receiver;
 import android.util.Log;
 import com.y59song.Forwader.TCPForwarder;
 
-import java.io.DataInputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.nio.ByteBuffer;
@@ -32,25 +31,6 @@ public class TCPReceiver implements Runnable {
     this.socketChannel = socket.getChannel();
     this.forwarder = forwarder;
     this.selector = selector;
-  }
-
-  public void run2() {
-    try {
-      DataInputStream inputStream = new DataInputStream(socket.getInputStream());
-      while(true) {
-        ByteBuffer response = ByteBuffer.allocate(65535);
-        int length = inputStream.read(response.array());
-        if(length > 0) {
-          //Log.d("TCP", "" + length);
-          count += length;
-          response.limit(length);
-          responses.add(response);
-        }
-        send();
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
   }
 
   @Override
