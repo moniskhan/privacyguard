@@ -2,6 +2,7 @@ package com.y59song.Forwader.Receiver;
 
 import android.util.Log;
 import com.y59song.Forwader.TCPForwarder;
+import com.y59song.Utilities.SSLParser;
 
 import java.io.IOException;
 import java.net.Socket;
@@ -10,24 +11,19 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
-import java.util.LinkedList;
 
 /**
  * Created by y59song on 03/04/14.
  */
 public class TCPReceiver implements Runnable {
   private final String TAG = "TCPReceiver";
-  private Socket socket;
   private SocketChannel socketChannel;
   private Selector selector;
   private TCPForwarder forwarder;
-  private LinkedList<ByteBuffer> responses = new LinkedList<ByteBuffer>();
-  private int count = 0;
   private final int limit = 2048;
   private ByteBuffer msg = ByteBuffer.allocate(limit);
 
   public TCPReceiver(Socket socket, TCPForwarder forwarder, Selector selector) {
-    this.socket = socket;
     this.socketChannel = socket.getChannel();
     this.forwarder = forwarder;
     this.selector = selector;
@@ -59,6 +55,7 @@ public class TCPReceiver implements Runnable {
             Log.d(TAG, "" + msg.remaining() + ", " + length);
             byte[] temp = new byte[length];
             msg.get(temp);
+            SSLParser.getCertificate(temp);
             forwarder.receive(temp);
           } catch (IOException e) {
             e.printStackTrace();
@@ -66,15 +63,5 @@ public class TCPReceiver implements Runnable {
         }
       }
     }
-  }
-
-  public void send() {
-    if(responses.isEmpty()) return;
-    byte[] temp = new byte[Math.min(responses.element().remaining(), limit)];
-    responses.element().get(temp);
-    if(responses.element().remaining() == 0) responses.remove();
-    forwarder.receive(temp);
-    count -= temp.length;
-    Log.d("TCP", "Remain : " + count);
   }
 }

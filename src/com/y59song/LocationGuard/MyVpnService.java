@@ -49,7 +49,6 @@ public class MyVpnService extends VpnService implements Runnable{
 
     try {
       while (mInterface != null && mInterface.getFileDescriptor() != null && mInterface.getFileDescriptor().valid()) {
-        //packet.clear();
         int length = localIn.read(packet.array());
         if(length > 0) {
           packet.limit(length);
@@ -57,11 +56,9 @@ public class MyVpnService extends VpnService implements Runnable{
           packet.clear();
           if(ip == null) continue;
           int port = ip.payLoad().getSrcPort();
-          Log.d(TAG, "Port : " + ip.payLoad().getDstPort());
           AbsForwarder temp;
           if(!portToForwarder.containsKey(port)) {
             temp = ForwarderBuilder.build(ip.header().protocol(), this);
-            //temp.start();
             portToForwarder.put(port, temp);
           } else temp = portToForwarder.get(port);
           temp.request(ip);
@@ -105,7 +102,6 @@ public class MyVpnService extends VpnService implements Runnable{
   private void configure() {
     Builder b = new Builder();
     b.addAddress("10.0.0.0", 28);
-    //b.addAddress(getLocalAddress(), 28);
     b.addRoute("0.0.0.0", 0);
     //b.addRoute("8.8.8.8", 32);
     //b.addDnsServer("8.8.8.8");
@@ -118,7 +114,6 @@ public class MyVpnService extends VpnService implements Runnable{
 
   @Override
   public void onDestroy() {
-    Log.d(TAG, "destroy");
     super.onDestroy();
     if(mInterface == null) return;
     try {
