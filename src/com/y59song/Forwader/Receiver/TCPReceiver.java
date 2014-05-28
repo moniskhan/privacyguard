@@ -2,7 +2,6 @@ package com.y59song.Forwader.Receiver;
 
 import android.util.Log;
 import com.y59song.Forwader.TCPForwarder;
-import com.y59song.Utilities.SSLParser;
 
 import java.io.IOException;
 import java.net.Socket;
@@ -55,7 +54,7 @@ public class TCPReceiver implements Runnable {
             Log.d(TAG, "" + msg.remaining() + ", " + length);
             byte[] temp = new byte[length];
             msg.get(temp);
-            SSLParser.getCertificate(temp);
+            //SSLParser.getCertificate(temp);
             forwarder.receive(temp);
           } catch (IOException e) {
             e.printStackTrace();

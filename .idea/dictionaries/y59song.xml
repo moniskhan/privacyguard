@@ -3,6 +3,7 @@
     <words>
       <w>addr</w>
       <w>finack</w>
+      <w>pkcs</w>
       <w>synack</w>
     </words>
   </dictionary>

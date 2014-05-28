@@ -19,11 +19,9 @@ public class UDPDatagram extends IPPayLoad {
   public UDPDatagram(UDPHeader header, byte[] data) {
     this.header = header;
     this.data = data;
-    //Log.d(TAG, "Data Length : " + data.length);
     if(header.getTotal_length() != data.length + header.headerLength()) {
       header.setTotal_length(data.length + header.headerLength());
     }
-    debugInfo();
   }
 
   public void debugInfo() {

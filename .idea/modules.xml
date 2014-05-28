@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/../sandrop/projects/SandroProxyLib/SandroProxyLib.iml" filepath="$PROJECT_DIR$/../sandrop/projects/SandroProxyLib/SandroProxyLib.iml" />
       <module fileurl="file://$PROJECT_DIR$/locationguard.iml" filepath="$PROJECT_DIR$/locationguard.iml" />
     </modules>
   </component>

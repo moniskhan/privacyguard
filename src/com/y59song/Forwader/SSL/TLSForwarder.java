@@ -1,52 +1,35 @@
-package com.y59song.Forwader;
+package com.y59song.Forwader.SSL;
 
 import android.util.Log;
 import com.y59song.Forwader.Receiver.TCPReceiver;
+import com.y59song.Forwader.TCPForwarder;
 import com.y59song.LocationGuard.MyVpnService;
 import com.y59song.Network.IP.IPDatagram;
-import com.y59song.Network.IP.IPPayLoad;
+import com.y59song.Network.SSL.SSLSocketChannel;
 import com.y59song.Network.TCP.TCPDatagram;
 import com.y59song.Network.TCP.TCPHeader;
 import com.y59song.Network.TCPConnectionInfo;
+import org.sandrop.webscarab.plugin.proxy.SiteData;
 
+import javax.net.ssl.SSLContext;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
-import java.nio.channels.SocketChannel;
+import java.security.GeneralSecurityException;
 
 /**
- * Created by frank on 2014-03-27.
+ * Created by y59song on 27/05/14.
  */
-public class TCPForwarder extends AbsForwarder implements ICommunication {
-  private final String TAG = "TCPForwarder";
-  protected SocketChannel socketChannel;
-  protected Socket socket;
-  protected TCPReceiver receiver;
-  protected TCPConnectionInfo conn_info;
-
-  public enum Status {
-    END_CLIENT, END_SERVER, END, DATA, LISTEN, SYN_ACK_SENT;
-  }
-
-  protected Status status;
-
-  public TCPForwarder(MyVpnService vpnService) {
+public class TLSForwarder extends TCPForwarder {
+  private static final String TAG = "TLSForwarder";
+  private SSLSocketChannel sslSocketChannel;
+  private SSLContext sslContext;
+  public TLSForwarder(MyVpnService vpnService) {
     super(vpnService);
-    status = Status.LISTEN;
   }
 
-  /*
-   * step 1 : reverse the IP header
-   * step 2 : create a new TCP header, set the syn, ack right
-   * step 3 : get the response if necessary
-   * step 4 : combine the response and create a new tcp datagram
-   * step 5 : update the datagram's checksum
-   * step 6 : combine the tcp datagram and the ip datagram, update the ip header
-   */
   protected void forward (IPDatagram ipDatagram) {
     byte flag;
     int len, rlen;
@@ -121,61 +104,23 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
   }
 
   @Override
-  public void receive (byte[] response) {
-    if(conn_info == null) return;
-    conn_info.increaseSeq(
-      forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.DATA), response))
-    );
-  }
-
-  @Override
-  public void send(IPPayLoad payLoad) {
-    if(socket != null && !socket.isConnected()) {
-      status = Status.END_SERVER;
-      forward(null);
-    }
-    try {
-      // Non-blocking
-      socketChannel.write(ByteBuffer.wrap(payLoad.data()));
-
-      // Blocking
-      /*
-      if(outputStream == null) outputStream = new DataOutputStream(socket.getOutputStream());
-      outputStream.write(payLoad.data());
-      outputStream.flush();
-      */
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-  }
-
-  @Override
-  public void close() {
-    conn_info = null;
-    //status = Status.LISTEN;
-    if(socket == null) return;
-    try{
-      if(!socket.isInputShutdown()) socket.shutdownInput();
-      if(!socket.isOutputShutdown()) socket.shutdownOutput();
-      socket.close();
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-  }
-
-  @Override
   public void setup(InetAddress dstAddress, int port) {
     try {
-      if(socketChannel == null) socketChannel = SocketChannel.open();
+      if(socketChannel == null) socketChannel = socketChannel.open();
       socket = socketChannel.socket();
       vpnService.protect(socketChannel.socket());
       socketChannel.connect(new InetSocketAddress(dstAddress, port));
-      socketChannel.configureBlocking(false);
+      SiteData remoteData = vpnService.getResolver().getSecureHost(socket, port, true);
+      sslContext = vpnService.getSSlSocketFactoryFactory().getSSLContext(remoteData);
+      sslSocketChannel = new SSLSocketChannel(socketChannel, sslContext.createSSLEngine());
+      sslSocketChannel.configureBlocking(false);
       Selector selector = Selector.open();
       socketChannel.register(selector, SelectionKey.OP_READ);
-      receiver = new TCPReceiver(socket, this, selector);
+      receiver = new TCPReceiver(sslSocketChannel.socket(), this, selector);
       new Thread(receiver).start();
     } catch (IOException e) {
+      e.printStackTrace();
+    } catch (GeneralSecurityException e) {
       e.printStackTrace();
     }
   }

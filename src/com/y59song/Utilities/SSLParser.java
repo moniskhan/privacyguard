@@ -14,14 +14,22 @@ import java.io.IOException;
  */
 public class SSLParser {
   private static final String TAG = "SSL Parser";
-  public static SSLData handshake(byte[] packet, SSLData data) {
+  public static final int CLIENT = 0, SERVER = 1;
+  public static SSLData processHandshake(byte[] packet, SSLData data, int type) {
     if(data == null) data = new SSLData();
-    
+    switch(type) {
+      case CLIENT:
+        break;
+      case SERVER:
+        break;
+      default:
+        return null;
+    }
     return data;
   }
 
   public static byte[] certificate(byte[] sslpacket) {
-
+    return null;
   }
 
   public static Certificate getCertificate(byte[] sslpacket){

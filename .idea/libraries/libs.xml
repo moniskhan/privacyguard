@@ -1,0 +1,17 @@
+<component name="libraryTable">
+  <library name="libs">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/../sandrop/projects/SandroProxyLib/libs/chardet.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../sandrop/projects/SandroProxyLib/libs/bc.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../sandrop/projects/SandroProxyLib/libs/bsh-2.0b4.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../sandrop/projects/SandroProxyLib/libs/concurrent.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../sandrop/projects/SandroProxyLib/libs/bsf-2.3.0.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../sandrop/projects/SandroProxyLib/libs/jcifs-1.3.14.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../sandrop/projects/SandroProxyLib/libs/htmlparser.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../sandrop/projects/SandroProxyLib/libs/jnetutils.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../sandrop/projects/SandroProxyLib/libs/java_websocket.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

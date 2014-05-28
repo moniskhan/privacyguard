@@ -7,6 +7,8 @@ import android.util.Log;
 import com.y59song.Forwader.AbsForwarder;
 import com.y59song.Forwader.ForwarderBuilder;
 import com.y59song.Network.IP.IPDatagram;
+import org.sandrop.webscarab.plugin.proxy.SSLSocketFactoryFactory;
+import org.sandroproxy.utils.NetworkHostNameResolver;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -15,6 +17,7 @@ import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
+import java.security.GeneralSecurityException;
 import java.util.Enumeration;
 import java.util.HashMap;
 
@@ -31,6 +34,22 @@ public class MyVpnService extends VpnService implements Runnable{
   private FileInputStream localIn;
   private FileOutputStream localOut;
 
+  //SSL stuff
+  private String Dir;
+  public static final String CAName = "/LocationGuard_CA";
+  public static final String CertName = "/LocationGuard_Cert";
+  public static final String KeyType = "PKCS12";
+  public static final String Password = "";
+  private SSLSocketFactoryFactory sslSocketFactoryFactory;
+
+  //Network
+  private NetworkHostNameResolver resolver;
+
+  public MyVpnService() {
+    Dir = this.getExternalCacheDir().getAbsolutePath();
+    resolver = new NetworkHostNameResolver(this);
+  }
+
   @Override
   public int onStartCommand(Intent intent, int flags, int startId) {
     if(mThread != null) mThread.interrupt();
@@ -45,6 +64,13 @@ public class MyVpnService extends VpnService implements Runnable{
     configure();
     localIn = new FileInputStream(mInterface.getFileDescriptor());
     localOut = new FileOutputStream(mInterface.getFileDescriptor());
+    try {
+      sslSocketFactoryFactory = new SSLSocketFactoryFactory(Dir + CAName, Dir + CertName, KeyType, Password.toCharArray());
+    } catch (GeneralSecurityException e) {
+      e.printStackTrace();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
     ByteBuffer packet = ByteBuffer.allocate(2048);
 
     try {
@@ -74,7 +100,7 @@ public class MyVpnService extends VpnService implements Runnable{
   public synchronized void fetchResponse(byte[] response) {
     if(localOut == null || response == null) return;
     try {
-      Log.d(TAG, "" + response.length);
+      if(LocationGuard.debug) Log.d(TAG, "" + response.length);
       localOut.write(response);
       localOut.flush();
     } catch (IOException e) {
@@ -97,6 +123,14 @@ public class MyVpnService extends VpnService implements Runnable{
       e.printStackTrace();
     }
     return null;
+  }
+
+  public SSLSocketFactoryFactory getSSlSocketFactoryFactory() {
+    return sslSocketFactoryFactory;
+  }
+
+  public NetworkHostNameResolver getResolver() {
+    return resolver;
   }
 
   private void configure() {
