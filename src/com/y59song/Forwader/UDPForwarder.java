@@ -31,6 +31,7 @@ public class UDPForwarder extends AbsForwarder implements ICommunication {
 
   @Override
   protected void forward(IPDatagram ipDatagram) {
+    if(closed) return;
     UDPDatagram udpDatagram = (UDPDatagram)ipDatagram.payLoad();
     setup(ipDatagram.header().getDstAddress(), ipDatagram.payLoad().getDstPort());
     send(udpDatagram);
@@ -80,5 +81,7 @@ public class UDPForwarder extends AbsForwarder implements ICommunication {
   @Override
   public void close() {
     socket.close();
+    closed = true;
+    vpnService.getForwarderPools().release(this);
   }
 }

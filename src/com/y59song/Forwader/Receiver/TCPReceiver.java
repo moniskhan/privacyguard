@@ -4,7 +4,6 @@ import android.util.Log;
 import com.y59song.Forwader.TCPForwarder;
 
 import java.io.IOException;
-import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -17,7 +16,6 @@ import java.util.LinkedList;
  */
 public class TCPReceiver implements Runnable {
   private final String TAG = "TCPReceiver";
-  private Socket socket;
   private SocketChannel socketChannel;
   private Selector selector;
   private TCPForwarder forwarder;
@@ -26,9 +24,8 @@ public class TCPReceiver implements Runnable {
   private final int limit = 2048;
   private ByteBuffer msg = ByteBuffer.allocate(limit);
 
-  public TCPReceiver(Socket socket, TCPForwarder forwarder, Selector selector) {
-    this.socket = socket;
-    this.socketChannel = socket.getChannel();
+  public TCPReceiver(SocketChannel socketChannel, TCPForwarder forwarder, Selector selector) {
+    this.socketChannel = socketChannel;
     this.forwarder = forwarder;
     this.selector = selector;
   }

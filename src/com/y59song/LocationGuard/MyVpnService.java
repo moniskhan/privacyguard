@@ -4,8 +4,7 @@ import android.content.Intent;
 import android.net.VpnService;
 import android.os.ParcelFileDescriptor;
 import android.util.Log;
-import com.y59song.Forwader.AbsForwarder;
-import com.y59song.Forwader.ForwarderBuilder;
+import com.y59song.Forwader.ForwarderPools;
 import com.y59song.Network.IP.IPDatagram;
 
 import java.io.FileInputStream;
@@ -16,7 +15,6 @@ import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.util.Enumeration;
-import java.util.HashMap;
 
 /**
  * Created by frank on 2014-03-26.
@@ -24,19 +22,21 @@ import java.util.HashMap;
 public class MyVpnService extends VpnService implements Runnable{
   private static final String TAG = "MyVpnService";
   private Thread mThread;
-  public static HashMap<Integer, AbsForwarder> portToForwarder;
 
   //The virtual network interface, get and return packets to it
   private ParcelFileDescriptor mInterface;
   private FileInputStream localIn;
   private FileOutputStream localOut;
 
+  //Pools
+  private ForwarderPools forwarderPools;
+
   @Override
   public int onStartCommand(Intent intent, int flags, int startId) {
     if(mThread != null) mThread.interrupt();
     mThread = new Thread(this, getClass().getSimpleName());
     mThread.start();
-    portToForwarder = new HashMap<Integer, AbsForwarder>();
+    forwarderPools = new ForwarderPools(this);
     return 0;
   }
 
@@ -58,13 +58,7 @@ public class MyVpnService extends VpnService implements Runnable{
           if(ip == null) continue;
           int port = ip.payLoad().getSrcPort();
           Log.d(TAG, "Port : " + ip.payLoad().getDstPort());
-          AbsForwarder temp;
-          if(!portToForwarder.containsKey(port)) {
-            temp = ForwarderBuilder.build(ip.header().protocol(), this);
-            //temp.start();
-            portToForwarder.put(port, temp);
-          } else temp = portToForwarder.get(port);
-          temp.request(ip);
+          forwarderPools.get(port, ip.header().protocol()).request(ip);
         } else Thread.sleep(100);
       }
     } catch (IOException e) {
@@ -83,6 +77,10 @@ public class MyVpnService extends VpnService implements Runnable{
     } catch (IOException e) {
       e.printStackTrace();
     }
+  }
+
+  public ForwarderPools getForwarderPools() {
+    return forwarderPools;
   }
 
   private InetAddress getLocalAddress() {

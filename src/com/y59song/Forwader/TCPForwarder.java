@@ -9,11 +9,9 @@ import com.y59song.Network.TCP.TCPDatagram;
 import com.y59song.Network.TCP.TCPHeader;
 import com.y59song.Network.TCPConnectionInfo;
 
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -25,8 +23,6 @@ import java.nio.channels.SocketChannel;
 public class TCPForwarder extends AbsForwarder implements ICommunication {
   private final String TAG = "TCPForwarder";
   private SocketChannel socketChannel;
-  private Socket socket;
-  private DataOutputStream outputStream;
   private TCPReceiver receiver;
   private TCPConnectionInfo conn_info;
 
@@ -50,6 +46,7 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
    * step 6 : combine the tcp datagram and the ip datagram, update the ip header
    */
   protected void forward (IPDatagram ipDatagram) {
+    if(closed) return;
     byte flag;
     int len, rlen;
     if(ipDatagram != null) {
@@ -81,9 +78,7 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
         }
         break;
       case DATA:
-        //int ack = ((TCPHeader)ipDatagram.payLoad().header()).getAck_num();
         if(rlen > 0) {
-          //conn_info.reset(ipDatagram);
           conn_info.increaseSeq(
             forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.ACK), null))
           );
@@ -132,21 +127,19 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
   }
 
   @Override
+  public boolean isClosed() {
+    return closed;
+  }
+
+  @Override
   public void send(IPPayLoad payLoad) {
-    if(socket != null && !socket.isConnected()) {
+    if(isClosed()) {
       status = Status.END_SERVER;
       forward(null);
     }
     try {
       // Non-blocking
       socketChannel.write(ByteBuffer.wrap(payLoad.data()));
-
-      // Blocking
-      /*
-      if(outputStream == null) outputStream = new DataOutputStream(socket.getOutputStream());
-      outputStream.write(payLoad.data());
-      outputStream.flush();
-      */
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -154,29 +147,27 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
 
   @Override
   public void close() {
+    closed = true;
     conn_info = null;
-    //status = Status.LISTEN;
-    if(socket == null) return;
-    try{
-      if(!socket.isInputShutdown()) socket.shutdownInput();
-      if(!socket.isOutputShutdown()) socket.shutdownOutput();
-      socket.close();
+    if(socketChannel == null) return;
+    try {
+      socketChannel.close();
     } catch (IOException e) {
       e.printStackTrace();
     }
+    vpnService.getForwarderPools().release(this);
   }
 
   @Override
   public void setup(InetAddress dstAddress, int port) {
     try {
       if(socketChannel == null) socketChannel = SocketChannel.open();
-      socket = socketChannel.socket();
       vpnService.protect(socketChannel.socket());
       socketChannel.connect(new InetSocketAddress(dstAddress, port));
       socketChannel.configureBlocking(false);
       Selector selector = Selector.open();
       socketChannel.register(selector, SelectionKey.OP_READ);
-      receiver = new TCPReceiver(socket, this, selector);
+      receiver = new TCPReceiver(socketChannel, this, selector);
       new Thread(receiver).start();
     } catch (IOException e) {
       e.printStackTrace();

@@ -23,7 +23,7 @@ public class UDPDatagram extends IPPayLoad {
     if(header.getTotal_length() != data.length + header.headerLength()) {
       header.setTotal_length(data.length + header.headerLength());
     }
-    debugInfo();
+    //debugInfo();
   }
 
   public void debugInfo() {
