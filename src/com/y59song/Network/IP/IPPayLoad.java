@@ -30,10 +30,7 @@ public abstract class IPPayLoad {
 
   protected byte[] getPseudoHeader(IPHeader ipHeader) {
     int length = length();
-    byte[] pseudoHeader = ByteOperations.concatenate(ipHeader.getSrcAddressByteArray(),
-      ipHeader.getDstAddressByteArray(), new byte[]{0, ipHeader.protocol(), (byte)((length & 0xFF00) >> 8)
-      , (byte)(length & 0xFF)});
-    return pseudoHeader;
+    return ipHeader.getPseudoHeader(length);
   }
 
   public void update(IPHeader ipHeader) {

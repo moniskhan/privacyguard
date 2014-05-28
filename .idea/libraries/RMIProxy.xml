@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="RMIProxy">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/libs/RMIProxy.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
