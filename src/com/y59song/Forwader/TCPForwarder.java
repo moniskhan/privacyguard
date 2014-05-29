@@ -55,13 +55,13 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
       rlen = ipDatagram.payLoad().dataLength();
       if(conn_info == null) conn_info = new TCPConnectionInfo(ipDatagram);
       conn_info.setAck(((TCPHeader)ipDatagram.payLoad().header()).getSeq_num());
+      //conn_info.setSeq(((TCPHeader)ipDatagram.payLoad().header()).getAck_num());
     } else return;
     Log.d(TAG, "" + status);
     switch(status) {
       case LISTEN:
         if(flag != TCPHeader.SYN) return;
         conn_info.reset(ipDatagram);
-        //Log.d(TAG, "Seq : " + conn_info.seq);
         conn_info.increaseSeq(
           forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.SYNACK), null))
         );
@@ -116,6 +116,8 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
       default:
         break;
     }
+    //if(receiver == null || conn_info == null) return;
+    //receiver.fetch(((TCPHeader)ipDatagram.payLoad().header()).getAck_num());
   }
 
   @Override
@@ -133,6 +135,7 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
 
   @Override
   public void send(IPPayLoad payLoad) {
+    //receiver.clear(((TCPHeader)payLoad.header()).getAck_num());
     if(isClosed()) {
       status = Status.END_SERVER;
       forward(null);
@@ -149,9 +152,11 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
   public void close() {
     closed = true;
     conn_info = null;
+    status = status.LISTEN;
     if(socketChannel == null) return;
     try {
       socketChannel.close();
+      socketChannel = null;
     } catch (IOException e) {
       e.printStackTrace();
     }

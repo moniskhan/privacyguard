@@ -14,6 +14,7 @@ import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.Enumeration;
 
 /**
@@ -27,6 +28,7 @@ public class MyVpnService extends VpnService implements Runnable{
   private ParcelFileDescriptor mInterface;
   private FileInputStream localIn;
   private FileOutputStream localOut;
+  private FileChannel inChannel, outChannel;
 
   //Pools
   private ForwarderPools forwarderPools;
@@ -43,22 +45,23 @@ public class MyVpnService extends VpnService implements Runnable{
   @Override
   public void run() {
     configure();
-    localIn = new FileInputStream(mInterface.getFileDescriptor());
-    localOut = new FileOutputStream(mInterface.getFileDescriptor());
     ByteBuffer packet = ByteBuffer.allocate(2048);
 
     try {
-      while (mInterface != null && mInterface.getFileDescriptor() != null && mInterface.getFileDescriptor().valid()) {
-        //packet.clear();
-        int length = localIn.read(packet.array());
+      //while (mInterface != null && mInterface.getFileDescriptor() != null && mInterface.getFileDescriptor().valid()) {
+      while(inChannel != null && inChannel.isOpen()) {
+        packet.clear();
+        int length = inChannel.read(packet); //localIn.read(packet.array());
         if(length > 0) {
-          packet.limit(length);
+          packet.flip();
+          //packet.limit(length);
           final IPDatagram ip = IPDatagram.create(packet);
-          packet.clear();
+          //packet.clear();
           if(ip == null) continue;
           int port = ip.payLoad().getSrcPort();
-          Log.d(TAG, "Port : " + ip.payLoad().getDstPort());
+          Log.d(TAG, "Getting forwarder : " + ip.header().protocol());
           forwarderPools.get(port, ip.header().protocol()).request(ip);
+          Log.d(TAG, "Got it : " + ip.header().protocol());
         } else Thread.sleep(100);
       }
     } catch (IOException e) {
@@ -69,9 +72,11 @@ public class MyVpnService extends VpnService implements Runnable{
   }
 
   public synchronized void fetchResponse(byte[] response) {
-    if(localOut == null || response == null) return;
+    if(outChannel == null || !outChannel.isOpen() || response == null) return;
     try {
       Log.d(TAG, "" + response.length);
+      //outChannel.write(ByteBuffer.wrap(response));
+      //outChannel.force(true);
       localOut.write(response);
       localOut.flush();
     } catch (IOException e) {
@@ -104,14 +109,18 @@ public class MyVpnService extends VpnService implements Runnable{
     Builder b = new Builder();
     b.addAddress("10.0.0.0", 28);
     //b.addAddress(getLocalAddress(), 28);
-    b.addRoute("0.0.0.0", 0);
+    //b.addRoute("0.0.0.0", 0);
     //b.addRoute("8.8.8.8", 32);
     //b.addDnsServer("8.8.8.8");
     //b.addRoute("220.181.37.55", 32);
-    //b.addRoute("173.194.43.0", 24);
+    b.addRoute("173.194.43.116", 32);
     //b.addRoute("71.19.173.0", 24);
-    b.setMtu(1500);
+    b.setMtu(3000);
     mInterface = b.establish();
+    localIn = new FileInputStream(mInterface.getFileDescriptor());
+    localOut = new FileOutputStream(mInterface.getFileDescriptor());
+    inChannel = localIn.getChannel();
+    outChannel = localOut.getChannel();
   }
 
   @Override
@@ -120,6 +129,8 @@ public class MyVpnService extends VpnService implements Runnable{
     super.onDestroy();
     if(mInterface == null) return;
     try {
+      inChannel.close();
+      outChannel.close();
       mInterface.close();
     } catch (IOException e) {
       e.printStackTrace();
