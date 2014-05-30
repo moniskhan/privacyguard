@@ -37,6 +37,10 @@ public abstract class AbsForwarder {//} extends Thread {
 
   public abstract void close();
 
+  public void open() {
+    closed = false;
+  }
+
   public boolean isClosed() {
     return closed;
   }

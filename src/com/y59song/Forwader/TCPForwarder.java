@@ -27,7 +27,7 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
   private TCPConnectionInfo conn_info;
 
   public enum Status {
-    END_CLIENT, END_SERVER, END, DATA, LISTEN, SYN_ACK_SENT;
+    DATA, LISTEN, SYN_ACK_SENT, HALF_CLOSE_BY_CLIENT, HALF_CLOSE_BY_SERVER, CLOSED;
   }
 
   private Status status;
@@ -55,12 +55,15 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
       rlen = ipDatagram.payLoad().dataLength();
       if(conn_info == null) conn_info = new TCPConnectionInfo(ipDatagram);
       conn_info.setAck(((TCPHeader)ipDatagram.payLoad().header()).getSeq_num());
-      //conn_info.setSeq(((TCPHeader)ipDatagram.payLoad().header()).getAck_num());
+      conn_info.setSeq(((TCPHeader)ipDatagram.payLoad().header()).getAck_num());
     } else return;
     Log.d(TAG, "" + status);
     switch(status) {
       case LISTEN:
-        if(flag != TCPHeader.SYN) return;
+        if(flag != TCPHeader.SYN) {
+          close();
+          return;
+        }
         conn_info.reset(ipDatagram);
         conn_info.increaseSeq(
           forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.SYNACK), null))
@@ -68,61 +71,60 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
         status = Status.SYN_ACK_SENT;
         break;
       case SYN_ACK_SENT:
-        if(flag == TCPHeader.SYN) {
-          status = Status.LISTEN;
-          forward(ipDatagram);
-        } else {
-          assert(flag == TCPHeader.ACK);
-          status = Status.DATA;
-          conn_info.setup(this);
+        if(flag != TCPHeader.ACK) {
+          close();
+          return;
         }
+        status = Status.DATA;
+        conn_info.setup(this);
         break;
       case DATA:
-        if(rlen > 0) {
+        assert((flag & TCPHeader.ACK) != 0);
+        if(rlen > 0) { // send data
           conn_info.increaseSeq(
             forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.ACK), null))
           );
           send(ipDatagram.payLoad());
-        } else if((flag & TCPHeader.FIN) != 0) {
+        } else if(flag == TCPHeader.FINACK) { // FIN
           conn_info.increaseSeq(
             forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.ACK), null))
           );
           conn_info.increaseSeq(
             forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.FINACK), null))
           );
+          status = Status.HALF_CLOSE_BY_CLIENT;
           close();
-          status = Status.END;
-        } else if((flag & TCPHeader.RST) != 0) {
+        } else if((flag & TCPHeader.RST) != 0) { // RST
           close();
-          status = Status.END;
         }
         break;
-      case END_CLIENT:
-        assert(flag == TCPHeader.FINACK);
-        conn_info.increaseSeq(
-          forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.ACK), null))
-        );
-        status = Status.END;
-        break;
-      case END_SERVER:
-        conn_info.increaseSeq(
-          forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.FINACK), null))
-        );
+      case HALF_CLOSE_BY_CLIENT:
+        assert(flag == TCPHeader.ACK);
+        status = Status.CLOSED;
         close();
-        status = Status.END_CLIENT;
         break;
-      case END:
-        status = Status.LISTEN;
+      case HALF_CLOSE_BY_SERVER:
+        if(flag == TCPHeader.FINACK) {
+          conn_info.increaseSeq(
+            forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.ACK), null))
+          );
+          status = Status.CLOSED;
+          close();
+        } // ELSE ACK for the finack sent by the server
+        break;
+      case CLOSED:
+        status = Status.CLOSED;
       default:
         break;
     }
-    //if(receiver == null || conn_info == null) return;
-    //receiver.fetch(((TCPHeader)ipDatagram.payLoad().header()).getAck_num());
+    if(receiver == null || conn_info == null) return; // only if the client send ack
+    receiver.fetch(((TCPHeader)ipDatagram.payLoad().header()).getAck_num());
   }
 
   @Override
   public void receive (byte[] response) {
     if(conn_info == null) return;
+//    /Log.d("Response", ByteOperations.byteArrayToHexString(response));
     conn_info.increaseSeq(
       forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.DATA), response))
     );
@@ -137,8 +139,10 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
   public void send(IPPayLoad payLoad) {
     //receiver.clear(((TCPHeader)payLoad.header()).getAck_num());
     if(isClosed()) {
-      status = Status.END_SERVER;
-      forward(null);
+      status = Status.HALF_CLOSE_BY_SERVER;
+      conn_info.increaseSeq(
+        forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.FINACK), null))
+      );
     }
     try {
       // Non-blocking
@@ -149,10 +153,17 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
   }
 
   @Override
+  public void open() {
+    if(!closed) return;
+    super.open();
+    status = Status.LISTEN;
+  }
+
+  @Override
   public void close() {
+    if(closed) return;
     closed = true;
     conn_info = null;
-    status = status.LISTEN;
     if(socketChannel == null) return;
     try {
       socketChannel.close();

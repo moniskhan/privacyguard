@@ -10,12 +10,8 @@ import com.y59song.Network.IP.IPDatagram;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.Enumeration;
 
 /**
  * Created by frank on 2014-03-26.
@@ -76,7 +72,6 @@ public class MyVpnService extends VpnService implements Runnable{
     try {
       Log.d(TAG, "" + response.length);
       //outChannel.write(ByteBuffer.wrap(response));
-      //outChannel.force(true);
       localOut.write(response);
       localOut.flush();
     } catch (IOException e) {
@@ -86,23 +81,6 @@ public class MyVpnService extends VpnService implements Runnable{
 
   public ForwarderPools getForwarderPools() {
     return forwarderPools;
-  }
-
-  private InetAddress getLocalAddress() {
-    try {
-      for(Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces(); en.hasMoreElements();) {
-        NetworkInterface netInterface = en.nextElement();
-        for(Enumeration<InetAddress> enumIpAddr = netInterface.getInetAddresses(); enumIpAddr.hasMoreElements();) {
-          InetAddress inetAddress = enumIpAddr.nextElement();
-          if(!inetAddress.isLoopbackAddress()) {
-            return inetAddress;
-          }
-        }
-      }
-    } catch (SocketException e) {
-      e.printStackTrace();
-    }
-    return null;
   }
 
   private void configure() {

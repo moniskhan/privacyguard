@@ -41,6 +41,7 @@ public class ForwarderPools {
       return portToForwarder.get(port);
     else {
       AbsForwarder temp = getByProtocol(protocol);
+      temp.open();
       portToForwarder.put(port, temp);
       return temp;
     }
