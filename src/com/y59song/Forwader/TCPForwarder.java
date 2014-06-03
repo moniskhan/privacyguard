@@ -5,6 +5,7 @@ import com.y59song.Forwader.Receiver.TCPReceiver;
 import com.y59song.LocationGuard.MyVpnService;
 import com.y59song.Network.IP.IPDatagram;
 import com.y59song.Network.IP.IPPayLoad;
+import com.y59song.Network.LocalServer;
 import com.y59song.Network.TCP.TCPDatagram;
 import com.y59song.Network.TCP.TCPHeader;
 import com.y59song.Network.TCPConnectionInfo;
@@ -140,10 +141,12 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
 
       // Blocking
       /*
+      DataOutputStream outputStream;
       if(outputStream == null) outputStream = new DataOutputStream(socket.getOutputStream());
       outputStream.write(payLoad.data());
       outputStream.flush();
       */
+
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -169,7 +172,7 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
       if(socketChannel == null) socketChannel = SocketChannel.open();
       socket = socketChannel.socket();
       vpnService.protect(socketChannel.socket());
-      socketChannel.connect(new InetSocketAddress(dstAddress, port));
+      socketChannel.connect(new InetSocketAddress(LocalServer.addr, LocalServer.port));
       socketChannel.configureBlocking(false);
       Selector selector = Selector.open();
       socketChannel.register(selector, SelectionKey.OP_READ);

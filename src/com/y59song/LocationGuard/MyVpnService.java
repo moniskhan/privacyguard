@@ -7,18 +7,16 @@ import android.util.Log;
 import com.y59song.Forwader.AbsForwarder;
 import com.y59song.Forwader.ForwarderBuilder;
 import com.y59song.Network.IP.IPDatagram;
+import com.y59song.Network.LocalServer;
 import org.sandrop.webscarab.plugin.proxy.SSLSocketFactoryFactory;
 import org.sandroproxy.utils.NetworkHostNameResolver;
+import org.sandroproxy.utils.network.ClientResolver;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
-import java.util.Enumeration;
 import java.util.HashMap;
 
 /**
@@ -44,10 +42,14 @@ public class MyVpnService extends VpnService implements Runnable{
 
   //Network
   private NetworkHostNameResolver resolver;
+  private ClientResolver clientResolver;
+  private LocalServer localServer;
 
   public MyVpnService() {
     Dir = this.getExternalCacheDir().getAbsolutePath();
     resolver = new NetworkHostNameResolver(this);
+    clientResolver = new ClientResolver(this);
+    localServer = new LocalServer(this);
   }
 
   @Override
@@ -108,23 +110,6 @@ public class MyVpnService extends VpnService implements Runnable{
     }
   }
 
-  private InetAddress getLocalAddress() {
-    try {
-      for(Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces(); en.hasMoreElements();) {
-        NetworkInterface netInterface = en.nextElement();
-        for(Enumeration<InetAddress> enumIpAddr = netInterface.getInetAddresses(); enumIpAddr.hasMoreElements();) {
-          InetAddress inetAddress = enumIpAddr.nextElement();
-          if(!inetAddress.isLoopbackAddress()) {
-            return inetAddress;
-          }
-        }
-      }
-    } catch (SocketException e) {
-      e.printStackTrace();
-    }
-    return null;
-  }
-
   public SSLSocketFactoryFactory getSSlSocketFactoryFactory() {
     return sslSocketFactoryFactory;
   }
@@ -133,15 +118,15 @@ public class MyVpnService extends VpnService implements Runnable{
     return resolver;
   }
 
+  public ClientResolver getClientResolver() {
+    return clientResolver;
+  }
+
   private void configure() {
     Builder b = new Builder();
     b.addAddress("10.0.0.0", 28);
     b.addRoute("0.0.0.0", 0);
-    //b.addRoute("8.8.8.8", 32);
-    //b.addDnsServer("8.8.8.8");
-    //b.addRoute("220.181.37.55", 32);
     //b.addRoute("173.194.43.0", 24);
-    //b.addRoute("71.19.173.0", 24);
     b.setMtu(1500);
     mInterface = b.establish();
   }
