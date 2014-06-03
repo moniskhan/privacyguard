@@ -45,7 +45,7 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
    * step 5 : update the datagram's checksum
    * step 6 : combine the tcp datagram and the ip datagram, update the ip header
    */
-  protected void forward (IPDatagram ipDatagram) {
+  protected synchronized void forward (IPDatagram ipDatagram) {
     if(closed) return;
     byte flag;
     int len, rlen;
@@ -54,10 +54,10 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
       len = ipDatagram.payLoad().virtualLength();
       rlen = ipDatagram.payLoad().dataLength();
       if(conn_info == null) conn_info = new TCPConnectionInfo(ipDatagram);
-      conn_info.setAck(((TCPHeader)ipDatagram.payLoad().header()).getSeq_num());
-      conn_info.setSeq(((TCPHeader)ipDatagram.payLoad().header()).getAck_num());
+      //conn_info.setAck(((TCPHeader)ipDatagram.payLoad().header()).getSeq_num());
+      //conn_info.setSeq(((TCPHeader)ipDatagram.payLoad().header()).getAck_num());
     } else return;
-    Log.d(TAG, "" + status);
+    Log.d(TAG, "" + status + "," + closed);
     switch(status) {
       case LISTEN:
         if(flag != TCPHeader.SYN) {
@@ -117,12 +117,12 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
       default:
         break;
     }
-    if(receiver == null || conn_info == null) return; // only if the client send ack
-    receiver.fetch(((TCPHeader)ipDatagram.payLoad().header()).getAck_num());
+    //if(receiver == null || conn_info == null) return; // only if the client send ack
+    //receiver.fetch(((TCPHeader)ipDatagram.payLoad().header()).getAck_num(), len > 0);
   }
 
   @Override
-  public void receive (byte[] response) {
+  public synchronized void receive (byte[] response) {
     if(conn_info == null) return;
 //    /Log.d("Response", ByteOperations.byteArrayToHexString(response));
     conn_info.increaseSeq(
@@ -164,12 +164,13 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
     if(closed) return;
     closed = true;
     conn_info = null;
-    if(socketChannel == null) return;
-    try {
-      socketChannel.close();
-      socketChannel = null;
-    } catch (IOException e) {
-      e.printStackTrace();
+    if(socketChannel != null) {
+      try {
+        socketChannel.close();
+        socketChannel = null;
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
     }
     vpnService.getForwarderPools().release(this);
   }

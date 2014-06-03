@@ -21,8 +21,9 @@ public class TCPReceiver implements Runnable {
   private TCPForwarder forwarder;
   private ConcurrentLinkedQueue<byte[]> responses = new ConcurrentLinkedQueue<byte[]>();
   private int lastAck = 1, start = 1, seq = 1, counter = 0;
-  private final int maxlength = 1292, maxCounter = 2;
+  private final int maxlength = 2500, maxCounter = 2;
   private ByteBuffer msg = ByteBuffer.allocate(maxlength);
+  private long lastTime = 0, timeout = 1000;
 
   public TCPReceiver(SocketChannel socketChannel, TCPForwarder forwarder, Selector selector) {
     this.socketChannel = socketChannel;
@@ -54,12 +55,16 @@ public class TCPReceiver implements Runnable {
             msg.flip();
             byte[] temp = new byte[length];
             msg.get(temp);
-            responses.add(temp);
-            Log.d(TAG, "" + seq + " , " + lastAck + " , " + length);
-            if(seq == lastAck) {
-              fetch(seq);
-            }
+            //responses.add(temp);
+            //Log.d(TAG, "" + seq + " , " + lastAck + " , " + length);
+            //if(seq == lastAck) {
+            //  fetch(seq, false);
+            //}
+            forwarder.receive(temp);
+            Thread.sleep(100);
           } catch (IOException e) {
+            e.printStackTrace();
+          } catch (InterruptedException e) {
             e.printStackTrace();
           }
         }
@@ -68,10 +73,16 @@ public class TCPReceiver implements Runnable {
     Log.d(TAG, "Thread exit");
   }
 
+  private void handleTimeout(int ack, boolean data) {
 
-  public synchronized void fetch(int ack) {
+  }
+
+  public synchronized void fetch(int ack, boolean data) {
+    long current = System.nanoTime();
+    Log.d(TAG, "Time : " + (current - lastTime));
+    if(current - lastTime > timeout) handleTimeout(ack, data);
     Log.d(TAG, "ACK : " + ack + ", " + start);
-    if(ack == lastAck && seq > ack) counter ++;
+    if(ack == lastAck) counter ++;
     if(counter > maxCounter) { // lost too much, just leave them
       counter = 0;
       while(seq > ack && !responses.isEmpty()) {
@@ -92,6 +103,7 @@ public class TCPReceiver implements Runnable {
     assert(start == ack);
     if(!responses.isEmpty()) {
       seq += responses.element().length;
+      lastTime = System.nanoTime();
       forwarder.receive(responses.element());
     }
   }

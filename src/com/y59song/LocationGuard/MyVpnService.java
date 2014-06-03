@@ -25,6 +25,7 @@ public class MyVpnService extends VpnService implements Runnable{
   private FileInputStream localIn;
   private FileOutputStream localOut;
   private FileChannel inChannel, outChannel;
+  private TunWriteThread writeThread;
 
   //Pools
   private ForwarderPools forwarderPools;
@@ -42,15 +43,19 @@ public class MyVpnService extends VpnService implements Runnable{
   public void run() {
     configure();
     ByteBuffer packet = ByteBuffer.allocate(2048);
+    writeThread = new TunWriteThread(mInterface.getFileDescriptor());
+    writeThread.start();
+
 
     try {
-      //while (mInterface != null && mInterface.getFileDescriptor() != null && mInterface.getFileDescriptor().valid()) {
-      while(inChannel != null && inChannel.isOpen()) {
+      while (mInterface != null && mInterface.getFileDescriptor() != null && mInterface.getFileDescriptor().valid()) {
+      //while(inChannel != null && inChannel.isOpen()) {
         packet.clear();
-        int length = inChannel.read(packet); //localIn.read(packet.array());
+        //int length = inChannel.read(packet);
+        int length = localIn.read(packet.array());
         if(length > 0) {
-          packet.flip();
-          //packet.limit(length);
+          //packet.flip();
+          packet.limit(length);
           final IPDatagram ip = IPDatagram.create(packet);
           //packet.clear();
           if(ip == null) continue;
@@ -67,16 +72,24 @@ public class MyVpnService extends VpnService implements Runnable{
     }
   }
 
-  public synchronized void fetchResponse(byte[] response) {
+  public void fetchResponse(byte[] response) {
+    /*
     if(outChannel == null || !outChannel.isOpen() || response == null) return;
     try {
-      Log.d(TAG, "" + response.length);
-      //outChannel.write(ByteBuffer.wrap(response));
-      localOut.write(response);
-      localOut.flush();
+      synchronized(localOut) {
+        //Log.d(TAG, "" + response.length);
+        //Log.d(TAG, ByteOperations.byteArrayToHexString(response));
+        outChannel.write(ByteBuffer.wrap(response));
+        //localOut.write(response);
+        localOut.flush();
+        //localOut.getFD().sync();
+        //Log.d(TAG, "" + response.length);
+      }
     } catch (IOException e) {
       e.printStackTrace();
     }
+    */
+    writeThread.write(response);
   }
 
   public ForwarderPools getForwarderPools() {

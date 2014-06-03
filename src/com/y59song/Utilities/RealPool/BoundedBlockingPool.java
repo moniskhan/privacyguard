@@ -34,7 +34,9 @@ public final class BoundedBlockingPool<T>
     if(!shutdownCalled) {
       T t = null;
       try {
-        t = (T)objects.poll(timeout, unit);
+        synchronized(objects) {
+          t = (T) objects.poll(timeout, unit);
+        }
       } catch(InterruptedException ie) {
         Thread.currentThread().interrupt();
       }
@@ -47,7 +49,9 @@ public final class BoundedBlockingPool<T>
     if(!shutdownCalled) {
       T t = null;
       try {
-        t = (T)objects.take();
+        synchronized(objects) {
+          t = (T) objects.take();
+        }
       } catch(InterruptedException ie) {
         Thread.currentThread().interrupt();
       }
@@ -96,7 +100,9 @@ public final class BoundedBlockingPool<T>
     public E call() throws Exception {
       while(true) {
         try {
-          queue.put(e);
+          synchronized(queue) {
+            queue.put(e);
+          }
           break;
         } catch(InterruptedException ie) {
           Thread.currentThread().interrupt();
