@@ -43,10 +43,13 @@ public class ByteOperations {
   }
 
   public static String byteArrayToString(byte[] array) {
+    return byteArrayToString(array, 0, array.length);
+  }
+
+  public static String byteArrayToString(byte[] array, int start, int end) {
     String ret = "";
-    for(byte b : array) {
-      ret += Character.toString((char)(b & 0xFF));
-    }
+    for(int i = start; i < end; i ++)
+      ret += Character.toString((char) (array[i] & 0xFF));
     return ret;
   }
 

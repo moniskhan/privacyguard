@@ -8,9 +8,11 @@ import com.y59song.Forwader.AbsForwarder;
 import com.y59song.Forwader.ForwarderBuilder;
 import com.y59song.Network.IP.IPDatagram;
 import com.y59song.Network.LocalServer;
+import com.y59song.Utilities.ByteOperations;
+import com.y59song.Utilities.MyClientResolver;
+import com.y59song.Utilities.MyNetworkHostNameResolver;
+import org.sandrop.webscarab.httpclient.HTTPClientFactory;
 import org.sandrop.webscarab.plugin.proxy.SSLSocketFactoryFactory;
-import org.sandroproxy.utils.NetworkHostNameResolver;
-import org.sandroproxy.utils.network.ClientResolver;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -41,16 +43,9 @@ public class MyVpnService extends VpnService implements Runnable{
   private SSLSocketFactoryFactory sslSocketFactoryFactory;
 
   //Network
-  private NetworkHostNameResolver resolver;
-  private ClientResolver clientResolver;
+  private MyNetworkHostNameResolver resolver;
+  private MyClientResolver clientResolver;
   private LocalServer localServer;
-
-  public MyVpnService() {
-    Dir = this.getExternalCacheDir().getAbsolutePath();
-    resolver = new NetworkHostNameResolver(this);
-    clientResolver = new ClientResolver(this);
-    localServer = new LocalServer(this);
-  }
 
   @Override
   public int onStartCommand(Intent intent, int flags, int startId) {
@@ -80,6 +75,7 @@ public class MyVpnService extends VpnService implements Runnable{
         int length = localIn.read(packet.array());
         if(length > 0) {
           packet.limit(length);
+          Log.d(TAG, "Length : " + length);
           final IPDatagram ip = IPDatagram.create(packet);
           packet.clear();
           if(ip == null) continue;
@@ -102,7 +98,7 @@ public class MyVpnService extends VpnService implements Runnable{
   public synchronized void fetchResponse(byte[] response) {
     if(localOut == null || response == null) return;
     try {
-      if(LocationGuard.debug) Log.d(TAG, "" + response.length);
+      if(LocationGuard.debug) Log.d(TAG, ByteOperations.byteArrayToString(response));
       localOut.write(response);
       localOut.flush();
     } catch (IOException e) {
@@ -114,21 +110,29 @@ public class MyVpnService extends VpnService implements Runnable{
     return sslSocketFactoryFactory;
   }
 
-  public NetworkHostNameResolver getResolver() {
+  public MyNetworkHostNameResolver getResolver() {
     return resolver;
   }
 
-  public ClientResolver getClientResolver() {
+  public MyClientResolver getClientResolver() {
     return clientResolver;
   }
 
   private void configure() {
     Builder b = new Builder();
     b.addAddress("10.0.0.0", 28);
-    b.addRoute("0.0.0.0", 0);
-    //b.addRoute("173.194.43.0", 24);
+    //b.addRoute("0.0.0.0", 0);
+    b.addRoute("173.194.43.116", 32);
     b.setMtu(1500);
     mInterface = b.establish();
+
+    resolver = new MyNetworkHostNameResolver(this);
+    clientResolver = new MyClientResolver(this);
+    localServer = new LocalServer(this);
+    new Thread(localServer).start();
+    Dir = this.getExternalCacheDir().getAbsolutePath();
+
+    HTTPClientFactory.getInstance(this);
   }
 
   @Override

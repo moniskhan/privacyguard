@@ -1,17 +1,18 @@
 package com.y59song.Network;
 
 import android.util.Log;
+import com.y59song.Forwader.MySocketForwarder;
 import com.y59song.LocationGuard.MyVpnService;
 import com.y59song.Utilities.SSLSocketBuilder;
 import org.sandrop.webscarab.model.ConnectionDescriptor;
 import org.sandrop.webscarab.plugin.proxy.SiteData;
-import org.sandrop.webscarab.plugin.proxy.SocketForwarder;
 
 import javax.net.ssl.SSLSocketFactory;
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.ServerSocket;
+import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
 
 /**
  * Created by frank on 2014-06-03.
@@ -19,15 +20,15 @@ import java.net.Socket;
 public class LocalServer implements Runnable {
   private static final boolean DEBUG = true;
   private static final String TAG = "LocalServer";
-  public static final String addr = "10.0.0.1";
-  public static final int port = 8010;
+  public static final String addr = "127.0.0.1";
+  public static final int port = 12345;
   public static final int SSLPort = 443;
 
-  private ServerSocket serverSocket;
+  private ServerSocketChannel serverSocketChannel;
   private boolean isStop = false;
   private MyVpnService vpnService;
   public LocalServer(MyVpnService vpnService) {
-    if(serverSocket == null || serverSocket.isClosed())
+    if(serverSocketChannel == null || !serverSocketChannel.isOpen())
       try {
         listen();
       } catch (IOException e) {
@@ -38,24 +39,49 @@ public class LocalServer implements Runnable {
   }
 
   private void listen() throws IOException {
-    serverSocket = new ServerSocket(port, 5, InetAddress.getByName(addr));
+    serverSocketChannel = ServerSocketChannel.open();
+    serverSocketChannel.socket().bind(new InetSocketAddress(port));
+  }
+
+  private class ForwarderHandler implements Runnable {
+    private Socket client;
+    public ForwarderHandler(Socket client) {
+      this.client = client;
+    }
+    @Override
+    public void run() {
+      try {
+        ConnectionDescriptor descriptor = vpnService.getClientResolver().getClientDescriptorBySocket(client);
+        SocketChannel targetChannel = SocketChannel.open();
+        Socket target = targetChannel.socket();
+        vpnService.protect(target);
+        if(descriptor.getRemotePort() == SSLPort) {
+          SiteData remoteData = vpnService.getResolver().getSecureHost(client, descriptor, false); // TODO
+          Log.d(TAG, remoteData.tcpAddress + " " + remoteData.hostName);
+          client = SSLSocketBuilder.negotiateSSL(client, remoteData, false, vpnService.getSSlSocketFactoryFactory());
+          targetChannel.connect(new InetSocketAddress(descriptor.getRemoteAddress(), descriptor.getRemotePort()));
+          target = ((SSLSocketFactory)SSLSocketFactory.getDefault()).createSocket(target, descriptor.getRemoteAddress(), descriptor.getRemotePort(), true);
+          Log.d(TAG, "" + target.getLocalPort() + " " + target.getInetAddress().getHostName() + " " + target.getInetAddress());
+        } else {
+          targetChannel.connect(new InetSocketAddress(descriptor.getRemoteAddress(), descriptor.getRemotePort()));
+        }
+        MySocketForwarder.connect("", client, target, false, null, descriptor);
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+    }
   }
 
   @Override
   public void run() {
     while(!isStop) {
       try {
-        Socket socket = serverSocket.accept();
-        ConnectionDescriptor descriptor = vpnService.getClientResolver().getClientDescriptorBySocket(socket);
-        Socket target;
-        if(descriptor.getRemotePort() == SSLPort) {
-          SiteData remoteData = vpnService.getResolver().getSecureHost(socket, descriptor.getRemotePort(), true);
-          socket = SSLSocketBuilder.negotiateSSL(socket, remoteData, false, vpnService.getSSlSocketFactoryFactory());
-          target = SSLSocketFactory.getDefault().createSocket(descriptor.getRemoteHostName(), descriptor.getRemotePort());
-        } else {
-          target = new Socket(descriptor.getRemoteAddress(), descriptor.getRemotePort());
-        }
-        SocketForwarder.connect("", socket, target, false, null, descriptor);
+        Log.d(TAG, "Accepting");
+        SocketChannel socketChannel = serverSocketChannel.accept();
+        Socket socket = socketChannel.socket();
+        Log.d(TAG, "Receiving : " + socket.getInetAddress().getHostAddress());
+        new Thread(new ForwarderHandler(socketChannel.socket())).start();
+        Log.d(TAG, "Not blocked");
       } catch (Exception e) {
         e.printStackTrace();
       }

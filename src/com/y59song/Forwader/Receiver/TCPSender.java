@@ -1,6 +1,5 @@
 package com.y59song.Forwader.Receiver;
 
-import android.util.Log;
 import com.y59song.Forwader.TCPForwarder;
 
 import java.io.IOException;
@@ -15,16 +14,16 @@ import java.util.LinkedList;
 /**
  * Created by y59song on 03/04/14.
  */
-public class TCPReceiver implements Runnable {
+public class TCPSender implements Runnable {
   private final String TAG = "TCPReceiver";
   private SocketChannel socketChannel;
   private Selector selector;
   private TCPForwarder forwarder;
+  private LinkedList<byte[]> request;
   private final int limit = 2048;
   private ByteBuffer msg = ByteBuffer.allocate(limit);
-  private LinkedList<byte[]> request;
 
-  public TCPReceiver(Socket socket, TCPForwarder forwarder, Selector selector) {
+  public TCPSender(Socket socket, TCPForwarder forwarder, Selector selector) {
     this.socketChannel = socket.getChannel();
     this.forwarder = forwarder;
     this.selector = selector;
@@ -46,29 +45,27 @@ public class TCPReceiver implements Runnable {
         e.printStackTrace();
       }
       Iterator<SelectionKey> iterator = selector.selectedKeys().iterator();
-      try {
-        Thread.sleep(100);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-      Log.d(TAG, "Selected");
       while(iterator.hasNext()) {
         SelectionKey key = iterator.next();
         iterator.remove();
-        if(!key.isValid()) continue;
-        else if(key.isReadable()) {
+        if(key.isValid() && key.isWritable()) {
           try {
-            Log.d(TAG, "Readable");
-            msg.clear();
-            int length = socketChannel.read(msg);
-            if(length <= 0) continue;
-            msg.flip();
-            byte[] temp = new byte[length];
-            msg.get(temp);
-            forwarder.receive(temp);
+            synchronized(request) {
+              if(request.isEmpty()) {
+                break;
+              }
+              socketChannel.write(ByteBuffer.wrap(request.remove()));
+            }
           } catch (IOException e) {
             e.printStackTrace();
           }
+        }
+      }
+      if(iterator.hasNext()) {
+        try {
+          Thread.sleep(100);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
         }
       }
     }

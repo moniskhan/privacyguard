@@ -63,6 +63,7 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
       case LISTEN:
         if(flag != TCPHeader.SYN) return;
         conn_info.reset(ipDatagram);
+        conn_info.setup(this);
         conn_info.increaseSeq(
           forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.SYNACK), null))
         );
@@ -75,7 +76,6 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
         } else {
           assert(flag == TCPHeader.ACK);
           status = Status.DATA;
-          conn_info.setup(this);
         }
         break;
       case DATA:
@@ -131,24 +131,15 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
 
   @Override
   public void send(IPPayLoad payLoad) {
-    if(socket != null && !socket.isConnected()) {
+    if (socket != null && !socket.isConnected()) {
       status = Status.END_SERVER;
       forward(null);
-    }
-    try {
-      // Non-blocking
-      socketChannel.write(ByteBuffer.wrap(payLoad.data()));
-
-      // Blocking
-      /*
-      DataOutputStream outputStream;
-      if(outputStream == null) outputStream = new DataOutputStream(socket.getOutputStream());
-      outputStream.write(payLoad.data());
-      outputStream.flush();
-      */
-
-    } catch (IOException e) {
-      e.printStackTrace();
+    } else {
+      try {
+        socketChannel.write(ByteBuffer.wrap(payLoad.data()));
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
     }
   }
 
@@ -167,19 +158,35 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
   }
 
   @Override
-  public void setup(InetAddress dstAddress, int port) {
+  public void setup(InetAddress srcAddress, int src_port) {
     try {
       if(socketChannel == null) socketChannel = SocketChannel.open();
       socket = socketChannel.socket();
-      vpnService.protect(socketChannel.socket());
-      socketChannel.connect(new InetSocketAddress(LocalServer.addr, LocalServer.port));
+      socket.bind(new InetSocketAddress(InetAddress.getLocalHost(), src_port));
+      socketChannel.connect(new InetSocketAddress(LocalServer.port));
       socketChannel.configureBlocking(false);
       Selector selector = Selector.open();
       socketChannel.register(selector, SelectionKey.OP_READ);
       receiver = new TCPReceiver(socket, this, selector);
       new Thread(receiver).start();
+      Log.d(TAG, "START");
     } catch (IOException e) {
       e.printStackTrace();
     }
   }
+
+  /*
+  public static void test() {
+    try {
+      SocketChannel socketChannel = SocketChannel.open();
+      socketChannel.connect(new InetSocketAddress(12345));
+      byte[] temp = new byte[1];
+      temp[0] = 'a';
+      Log.d("Test", "Test");
+      socketChannel.write(ByteBuffer.wrap(temp));
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+  */
 }

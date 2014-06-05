@@ -40,6 +40,6 @@ public class ConnectionInfo {
   }
 
   public void setup(ICommunication forwarder) {
-    forwarder.setup(serverAddress, serverPort);
+    forwarder.setup(clientAddress, clientPort);
   }
 }
