@@ -19,9 +19,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.security.GeneralSecurityException;
 
-<<<<<<<HEAD
-  =======
-  >>>>>>>retransmit
 
 /**
  * Created by frank on 2014-03-26.

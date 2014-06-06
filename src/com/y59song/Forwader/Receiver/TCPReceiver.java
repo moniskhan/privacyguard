@@ -9,6 +9,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
@@ -19,14 +20,8 @@ public class TCPReceiver implements Runnable {
   private SocketChannel socketChannel;
   private Selector selector;
   private TCPForwarder forwarder;
-<<<<<<< HEAD
-  private final int limit = 2048;
-  private ByteBuffer msg = ByteBuffer.allocate(limit);
   private LinkedList<byte[]> request;
 
-  public TCPReceiver(Socket socket, TCPForwarder forwarder, Selector selector) {
-    this.socketChannel = socket.getChannel();
-=======
   private ConcurrentLinkedQueue<byte[]> responses = new ConcurrentLinkedQueue<byte[]>();
   private int lastAck = 1, start = 1, seq = 1, counter = 0;
   private final int maxlength = 2500, maxCounter = 2;
@@ -35,7 +30,6 @@ public class TCPReceiver implements Runnable {
 
   public TCPReceiver(SocketChannel socketChannel, TCPForwarder forwarder, Selector selector) {
     this.socketChannel = socketChannel;
->>>>>>> retransmit
     this.forwarder = forwarder;
     this.selector = selector;
     request = new LinkedList<byte[]>();
@@ -57,15 +51,12 @@ public class TCPReceiver implements Runnable {
       }
       Log.d(TAG, "Selected");
       Iterator<SelectionKey> iterator = selector.selectedKeys().iterator();
-<<<<<<< HEAD
       try {
         Thread.sleep(100);
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
       Log.d(TAG, "Selected");
-=======
->>>>>>> retransmit
       while(iterator.hasNext()) {
         SelectionKey key = iterator.next();
         iterator.remove();
@@ -103,8 +94,6 @@ public class TCPReceiver implements Runnable {
   private void handleTimeout(int ack, boolean data) {
 
   }
-<<<<<<< HEAD
-=======
 
   public synchronized void fetch(int ack, boolean data) {
     long current = System.nanoTime();
@@ -136,5 +125,4 @@ public class TCPReceiver implements Runnable {
       forwarder.receive(responses.element());
     }
   }
->>>>>>> retransmit
 }
