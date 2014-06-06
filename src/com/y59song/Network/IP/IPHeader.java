@@ -4,30 +4,22 @@ import com.y59song.Network.AbsHeader;
 import com.y59song.Utilities.ByteOperations;
 
 import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.Arrays;
 
 /**
  * Created by frank on 2014-03-26.
  */
-public class IPHeader extends AbsHeader {
-  private int headerLength, length;
-  private InetAddress srcAddress, dstAddress;
-  private byte protocol = 0;
+public abstract class IPHeader extends AbsHeader {
+  protected int headerLength, length;
+  protected InetAddress srcAddress, dstAddress;
+  protected byte protocol = 0;
+  protected int srcIndex, dstIndex, addressSize;
+  protected int lengthIndex;
 
-  public IPHeader(byte[] data) {
-    headerLength = (data[0] & 0xFF) % 16 * 4;
-    length = ((data[2] & 0xFF) << 8) + (data[3] & 0xFF);
-    protocol = data[9];
-    try {
-      srcAddress = InetAddress.getByAddress(Arrays.copyOfRange(data, 12, 16));
-      dstAddress = InetAddress.getByAddress(Arrays.copyOfRange(data, 16, 20));
-    } catch (UnknownHostException e) {
-      e.printStackTrace();
-    }
-    checkSum_pos = 10;
-    checkSum_size = 2;
-    this.data = Arrays.copyOfRange(data, 0, headerLength);
+  public static IPHeader create(byte[] data) {
+    int version = (data[0] >> 4);
+    if(version == 4) return new IPv4Header(data);
+    else return new IPv6Header(data);
   }
 
   public int length() {
@@ -36,8 +28,8 @@ public class IPHeader extends AbsHeader {
 
   public void setLength(int l) {
     length = l;
-    data[2] = (byte)(l >> 8);
-    data[3] = (byte)(l % 256);
+    data[lengthIndex] = (byte)(l >> 8);
+    data[lengthIndex + 1] = (byte)(l % 256);
   }
 
   public byte protocol() {
@@ -51,18 +43,20 @@ public class IPHeader extends AbsHeader {
     return dstAddress;
   }
 
+  public abstract byte[] getPseudoHeader(int dataLength);
+
   public byte[] getSrcAddressByteArray() {
-    return Arrays.copyOfRange(data, 12, 16);
+    return Arrays.copyOfRange(data, srcIndex, srcIndex + addressSize);
   }
 
   public byte[] getDstAddressByteArray() {
-    return Arrays.copyOfRange(data, 16, 20);
+    return Arrays.copyOfRange(data, dstIndex, dstIndex + addressSize);
   }
 
   @Override
   public IPHeader reverse() {
     byte[] reverseData = Arrays.copyOfRange(data, 0, data.length);
-    ByteOperations.swap(reverseData, 12, 16, 4);
-    return new IPHeader(reverseData);
+    ByteOperations.swap(reverseData, srcIndex, dstIndex, addressSize);
+    return IPHeader.create(reverseData);
   }
 }

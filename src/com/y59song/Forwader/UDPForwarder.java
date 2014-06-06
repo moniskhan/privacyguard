@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
@@ -31,14 +32,18 @@ public class UDPForwarder extends AbsForwarder implements ICommunication {
 
   @Override
   protected void forward(IPDatagram ipDatagram) {
+    if(closed) return;
     UDPDatagram udpDatagram = (UDPDatagram)ipDatagram.payLoad();
     setup(ipDatagram.header().getDstAddress(), ipDatagram.payLoad().getDstPort());
     send(udpDatagram);
 
     IPHeader newIPHeader = ipDatagram.header().reverse();
     UDPHeader newUDPHeader = (UDPHeader)udpDatagram.header().reverse();
-    UDPDatagram newUDPDatagram = new UDPDatagram(newUDPHeader, receive());
-    forwardResponse(newIPHeader, newUDPDatagram);
+    byte[] received = receive();
+    if(received != null) {
+      forwardResponse(newIPHeader, new UDPDatagram(newUDPHeader, received));
+    }
+    close();
   }
 
   @Override
@@ -70,7 +75,10 @@ public class UDPForwarder extends AbsForwarder implements ICommunication {
   public byte[] receive() {
     try {
       packet.clear();
+      socket.setSoTimeout(10000);
       socket.receive(response);
+    } catch (SocketTimeoutException e) {
+      return null;
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -80,5 +88,7 @@ public class UDPForwarder extends AbsForwarder implements ICommunication {
   @Override
   public void close() {
     socket.close();
+    closed = true;
+    vpnService.getForwarderPools().release(this);
   }
 }

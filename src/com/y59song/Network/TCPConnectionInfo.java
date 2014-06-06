@@ -1,6 +1,5 @@
 package com.y59song.Network;
 
-import android.util.Log;
 import com.y59song.Network.IP.IPDatagram;
 import com.y59song.Network.TCP.TCPHeader;
 
@@ -35,7 +34,6 @@ public class TCPConnectionInfo extends ConnectionInfo {
     super.reset(ipDatagram);
     assert(protocol == IPDatagram.TCP);
     setSeq(((TCPHeader) ipDatagram.payLoad().header()).getAck_num());
-    //Log.d("TCPConnectionInfo", "" + this.seq + "," + ((TCPHeader)responseTransHeader).getSeq_num());
     setAck(((TCPHeader) ipDatagram.payLoad().header()).getSeq_num());
   }
 
@@ -44,7 +42,6 @@ public class TCPConnectionInfo extends ConnectionInfo {
   }
 
   public void increaseSeq(int inc) {
-    Log.d(TAG, "increse " + inc);
     setSeq(seq + inc);
   }
 

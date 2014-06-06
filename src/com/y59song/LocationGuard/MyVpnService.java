@@ -5,21 +5,23 @@ import android.net.VpnService;
 import android.os.ParcelFileDescriptor;
 import android.util.Log;
 import com.y59song.Forwader.AbsForwarder;
-import com.y59song.Forwader.ForwarderBuilder;
+import com.y59song.Forwader.ForwarderPools;
 import com.y59song.Network.IP.IPDatagram;
 import com.y59song.Network.LocalServer;
-import com.y59song.Utilities.ByteOperations;
 import com.y59song.Utilities.MyClientResolver;
 import com.y59song.Utilities.MyNetworkHostNameResolver;
-import org.sandrop.webscarab.httpclient.HTTPClientFactory;
 import org.sandrop.webscarab.plugin.proxy.SSLSocketFactoryFactory;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.security.GeneralSecurityException;
-import java.util.HashMap;
+
+<<<<<<<HEAD
+  =======
+  >>>>>>>retransmit
 
 /**
  * Created by frank on 2014-03-26.
@@ -27,12 +29,16 @@ import java.util.HashMap;
 public class MyVpnService extends VpnService implements Runnable{
   private static final String TAG = "MyVpnService";
   private Thread mThread;
-  public static HashMap<Integer, AbsForwarder> portToForwarder;
 
   //The virtual network interface, get and return packets to it
   private ParcelFileDescriptor mInterface;
   private FileInputStream localIn;
   private FileOutputStream localOut;
+  private FileChannel inChannel, outChannel;
+  private TunWriteThread writeThread;
+
+  //Pools
+  private ForwarderPools forwarderPools;
 
   //SSL stuff
   private String Dir;
@@ -52,7 +58,7 @@ public class MyVpnService extends VpnService implements Runnable{
     if(mThread != null) mThread.interrupt();
     mThread = new Thread(this, getClass().getSimpleName());
     mThread.start();
-    portToForwarder = new HashMap<Integer, AbsForwarder>();
+    forwarderPools = new ForwarderPools(this);
     return 0;
   }
 
@@ -69,15 +75,20 @@ public class MyVpnService extends VpnService implements Runnable{
       e.printStackTrace();
     }
     ByteBuffer packet = ByteBuffer.allocate(2048);
+    writeThread = new TunWriteThread(mInterface.getFileDescriptor());
+    writeThread.start();
+
 
     try {
       while (mInterface != null && mInterface.getFileDescriptor() != null && mInterface.getFileDescriptor().valid()) {
+        packet.clear();
         int length = localIn.read(packet.array());
         if(length > 0) {
+          //packet.flip();
           packet.limit(length);
           Log.d(TAG, "Length : " + length);
           final IPDatagram ip = IPDatagram.create(packet);
-          packet.clear();
+          //packet.clear();
           if(ip == null) continue;
           int port = ip.payLoad().getSrcPort();
           AbsForwarder temp;
@@ -95,15 +106,8 @@ public class MyVpnService extends VpnService implements Runnable{
     }
   }
 
-  public synchronized void fetchResponse(byte[] response) {
-    if(localOut == null || response == null) return;
-    try {
-      if(LocationGuard.debug) Log.d(TAG, ByteOperations.byteArrayToString(response));
-      localOut.write(response);
-      localOut.flush();
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
+  public void fetchResponse(byte[] response) {
+    writeThread.write(response);
   }
 
   public SSLSocketFactoryFactory getSSlSocketFactoryFactory() {
@@ -118,10 +122,13 @@ public class MyVpnService extends VpnService implements Runnable{
     return clientResolver;
   }
 
+  public ForwarderPools getForwarderPools() {
+    return forwarderPools;
+  }
+
   private void configure() {
     Builder b = new Builder();
     b.addAddress("10.0.0.0", 28);
-    //b.addRoute("0.0.0.0", 0);
     b.addRoute("173.194.43.116", 32);
     b.setMtu(1500);
     mInterface = b.establish();
@@ -132,7 +139,10 @@ public class MyVpnService extends VpnService implements Runnable{
     new Thread(localServer).start();
     Dir = this.getExternalCacheDir().getAbsolutePath();
 
-    HTTPClientFactory.getInstance(this);
+    localIn = new FileInputStream(mInterface.getFileDescriptor());
+    localOut = new FileOutputStream(mInterface.getFileDescriptor());
+    inChannel = localIn.getChannel();
+    outChannel = localOut.getChannel();
   }
 
   @Override
@@ -140,6 +150,8 @@ public class MyVpnService extends VpnService implements Runnable{
     super.onDestroy();
     if(mInterface == null) return;
     try {
+      inChannel.close();
+      outChannel.close();
       mInterface.close();
     } catch (IOException e) {
       e.printStackTrace();

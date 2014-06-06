@@ -13,7 +13,6 @@ import com.y59song.Network.TCPConnectionInfo;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -24,13 +23,19 @@ import java.nio.channels.SocketChannel;
  */
 public class TCPForwarder extends AbsForwarder implements ICommunication {
   private final String TAG = "TCPForwarder";
+<<<<<<< HEAD
   protected SocketChannel socketChannel;
   protected Socket socket;
   protected TCPReceiver receiver;
   protected TCPConnectionInfo conn_info;
+=======
+  private SocketChannel socketChannel;
+  private TCPReceiver receiver;
+  private TCPConnectionInfo conn_info;
+>>>>>>> retransmit
 
   public enum Status {
-    END_CLIENT, END_SERVER, END, DATA, LISTEN, SYN_ACK_SENT;
+    DATA, LISTEN, SYN_ACK_SENT, HALF_CLOSE_BY_CLIENT, HALF_CLOSE_BY_SERVER, CLOSED;
   }
 
   protected Status status;
@@ -48,7 +53,8 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
    * step 5 : update the datagram's checksum
    * step 6 : combine the tcp datagram and the ip datagram, update the ip header
    */
-  protected void forward (IPDatagram ipDatagram) {
+  protected synchronized void forward (IPDatagram ipDatagram) {
+    if(closed) return;
     byte flag;
     int len, rlen;
     if(ipDatagram != null) {
@@ -56,81 +62,103 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
       len = ipDatagram.payLoad().virtualLength();
       rlen = ipDatagram.payLoad().dataLength();
       if(conn_info == null) conn_info = new TCPConnectionInfo(ipDatagram);
-      conn_info.setAck(((TCPHeader)ipDatagram.payLoad().header()).getSeq_num());
+      //conn_info.setAck(((TCPHeader)ipDatagram.payLoad().header()).getSeq_num());
+      //conn_info.setSeq(((TCPHeader)ipDatagram.payLoad().header()).getAck_num());
     } else return;
-    Log.d(TAG, "" + status);
+    Log.d(TAG, "" + status + "," + closed);
     switch(status) {
       case LISTEN:
-        if(flag != TCPHeader.SYN) return;
+        if(flag != TCPHeader.SYN) {
+          close();
+          return;
+        }
         conn_info.reset(ipDatagram);
+<<<<<<< HEAD
         conn_info.setup(this);
+=======
+>>>>>>> retransmit
         conn_info.increaseSeq(
           forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.SYNACK), null))
         );
         status = Status.SYN_ACK_SENT;
         break;
       case SYN_ACK_SENT:
+<<<<<<< HEAD
         if(flag == TCPHeader.SYN) {
           status = Status.LISTEN;
           forward(ipDatagram);
         } else {
           assert(flag == TCPHeader.ACK);
           status = Status.DATA;
+=======
+        if(flag != TCPHeader.ACK) {
+          close();
+          return;
+>>>>>>> retransmit
         }
+        status = Status.DATA;
+        conn_info.setup(this);
         break;
       case DATA:
-        //int ack = ((TCPHeader)ipDatagram.payLoad().header()).getAck_num();
-        if(rlen > 0) {
-          //conn_info.reset(ipDatagram);
+        assert((flag & TCPHeader.ACK) != 0);
+        if(rlen > 0) { // send data
           conn_info.increaseSeq(
             forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.ACK), null))
           );
           send(ipDatagram.payLoad());
-        } else if((flag & TCPHeader.FIN) != 0) {
+        } else if(flag == TCPHeader.FINACK) { // FIN
           conn_info.increaseSeq(
             forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.ACK), null))
           );
           conn_info.increaseSeq(
             forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.FINACK), null))
           );
+          status = Status.HALF_CLOSE_BY_CLIENT;
           close();
-          status = Status.END;
-        } else if((flag & TCPHeader.RST) != 0) {
+        } else if((flag & TCPHeader.RST) != 0) { // RST
           close();
-          status = Status.END;
         }
         break;
-      case END_CLIENT:
-        assert(flag == TCPHeader.FINACK);
-        conn_info.increaseSeq(
-          forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.ACK), null))
-        );
-        status = Status.END;
-        break;
-      case END_SERVER:
-        conn_info.increaseSeq(
-          forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.FINACK), null))
-        );
+      case HALF_CLOSE_BY_CLIENT:
+        assert(flag == TCPHeader.ACK);
+        status = Status.CLOSED;
         close();
-        status = Status.END_CLIENT;
         break;
-      case END:
-        status = Status.LISTEN;
+      case HALF_CLOSE_BY_SERVER:
+        if(flag == TCPHeader.FINACK) {
+          conn_info.increaseSeq(
+            forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.ACK), null))
+          );
+          status = Status.CLOSED;
+          close();
+        } // ELSE ACK for the finack sent by the server
+        break;
+      case CLOSED:
+        status = Status.CLOSED;
       default:
         break;
     }
+    //if(receiver == null || conn_info == null) return; // only if the client send ack
+    //receiver.fetch(((TCPHeader)ipDatagram.payLoad().header()).getAck_num(), len > 0);
   }
 
   @Override
-  public void receive (byte[] response) {
+  public synchronized void receive (byte[] response) {
     if(conn_info == null) return;
+//    /Log.d("Response", ByteOperations.byteArrayToHexString(response));
     conn_info.increaseSeq(
       forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.DATA), response))
     );
   }
 
   @Override
+  public boolean isClosed() {
+    return closed;
+  }
+
+  @Override
   public void send(IPPayLoad payLoad) {
+<<<<<<< HEAD
     if (socket != null && !socket.isConnected()) {
       status = Status.END_SERVER;
       forward(null);
@@ -140,34 +168,62 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
       } catch (IOException e) {
         e.printStackTrace();
       }
+=======
+    //receiver.clear(((TCPHeader)payLoad.header()).getAck_num());
+    if(isClosed()) {
+      status = Status.HALF_CLOSE_BY_SERVER;
+      conn_info.increaseSeq(
+        forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.FINACK), null))
+      );
+    }
+    try {
+      // Non-blocking
+      socketChannel.write(ByteBuffer.wrap(payLoad.data()));
+    } catch (IOException e) {
+      e.printStackTrace();
+>>>>>>> retransmit
     }
   }
 
   @Override
+  public void open() {
+    if(!closed) return;
+    super.open();
+    status = Status.LISTEN;
+  }
+
+  @Override
   public void close() {
+    if(closed) return;
+    closed = true;
     conn_info = null;
-    //status = Status.LISTEN;
-    if(socket == null) return;
-    try{
-      if(!socket.isInputShutdown()) socket.shutdownInput();
-      if(!socket.isOutputShutdown()) socket.shutdownOutput();
-      socket.close();
-    } catch (IOException e) {
-      e.printStackTrace();
+    if(socketChannel != null) {
+      try {
+        socketChannel.close();
+        socketChannel = null;
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
     }
+    vpnService.getForwarderPools().release(this);
   }
 
   @Override
   public void setup(InetAddress srcAddress, int src_port) {
     try {
       if(socketChannel == null) socketChannel = SocketChannel.open();
+<<<<<<< HEAD
       socket = socketChannel.socket();
       socket.bind(new InetSocketAddress(InetAddress.getLocalHost(), src_port));
       socketChannel.connect(new InetSocketAddress(LocalServer.port));
+=======
+      vpnService.protect(socketChannel.socket());
+      socketChannel.connect(new InetSocketAddress(dstAddress, port));
+>>>>>>> retransmit
       socketChannel.configureBlocking(false);
       Selector selector = Selector.open();
       socketChannel.register(selector, SelectionKey.OP_READ);
-      receiver = new TCPReceiver(socket, this, selector);
+      receiver = new TCPReceiver(socketChannel, this, selector);
       new Thread(receiver).start();
       Log.d(TAG, "START");
     } catch (IOException e) {

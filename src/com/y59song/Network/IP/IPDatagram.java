@@ -1,6 +1,5 @@
 package com.y59song.Network.IP;
 
-import com.y59song.Network.IP.IPPayLoad;
 import com.y59song.Network.TCP.TCPDatagram;
 import com.y59song.Network.UDP.UDPDatagram;
 import com.y59song.Utilities.ByteOperations;
@@ -19,7 +18,7 @@ public class IPDatagram {
 
   public static final int TCP = 6, UDP = 17;
   public static IPDatagram create(ByteBuffer packet) {
-    IPHeader header = new IPHeader(Arrays.copyOfRange(packet.array(), 0, 60));
+    IPHeader header = IPHeader.create(packet.array());
     IPPayLoad payLoad;
     if(header.protocol() == TCP) {
       payLoad = TCPDatagram.create(Arrays.copyOfRange(packet.array(), header.headerLength(), packet.limit()));
