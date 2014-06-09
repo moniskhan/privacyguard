@@ -4,15 +4,16 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
 import android.util.Log;
-import org.sandrop.webscarab.httpclient.HTTPClientFactory;
+import com.y59song.LocationGuard.MyVpnService;
 import org.sandrop.webscarab.model.ConnectionDescriptor;
-import org.sandrop.webscarab.model.HttpUrl;
 import org.sandrop.webscarab.plugin.proxy.SiteData;
 import org.sandroproxy.utils.DNSProxy;
 import org.sandroproxy.utils.PreferenceUtils;
 
 import javax.net.ssl.*;
+import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.nio.channels.SocketChannel;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
@@ -24,8 +25,7 @@ import java.util.Map;
  * Created by y59song on 05/06/14.
  */
 public class MyNetworkHostNameResolver {
-
-
+  private MyVpnService vpnService;
   private Context mContext;
   private String mHostName;
   private boolean mListenerStarted = false;
@@ -45,8 +45,9 @@ public class MyNetworkHostNameResolver {
     System.loadLibrary("socketdest");
   }
 
-  public MyNetworkHostNameResolver(Context context){
-    mContext = context;
+  public MyNetworkHostNameResolver(MyVpnService vpnService){
+    mContext = vpnService;
+    this.vpnService = vpnService;
     SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(mContext);
     String hostName = pref.getString(PreferenceUtils.proxyTransparentHostNameKey, null);
     if (hostName != null && hostName.length() > 0){
@@ -110,27 +111,16 @@ public class MyNetworkHostNameResolver {
           try {
             if (!ipPortSiteData.containsKey(siteDataCurrent.tcpAddress + ":" + siteDataCurrent.destPort)){
               String hostName = siteDataCurrent.hostName != null ? siteDataCurrent.hostName : siteDataCurrent.tcpAddress;
-              if (LOGD) Log.d(TAG, "Connect to " + hostName + " on port:" + siteDataCurrent.destPort);
-              HttpUrl base = new HttpUrl("https://" + hostName + ":" + siteDataCurrent.destPort);
-              Socket socket = HTTPClientFactory.getValidInstance().getConnectedSocket(base, false);
+              SocketChannel socketChannel = SocketChannel.open();
+              Socket socket = socketChannel.socket();
+              vpnService.protect(socket);
+              socketChannel.connect(new InetSocketAddress(hostName, siteDataCurrent.destPort));
               SSLContext sslContext = SSLContext.getInstance("TLS");
               sslContext.init(null, trustAllCerts, new SecureRandom());
               SSLSocketFactory factory = sslContext.getSocketFactory();
-              if (LOGD) Log.d(TAG, "SSLSocketFactory got" + socket.getInetAddress().getHostAddress());
-              SSLSocket sslsocket=(SSLSocket)factory.createSocket(socket,socket.getInetAddress().getHostAddress(),socket.getPort(),true);
-              // sslsocket.setEnabledProtocols(new String[] {"SSLv3"});
-              if (LOGD) Log.d(TAG, "SSLSocket created");
+              SSLSocket sslsocket = (SSLSocket)factory.createSocket(socket, socket.getInetAddress().getHostAddress(), socket.getPort(), true);
               sslsocket.setUseClientMode(true);
-              if (LOGD) Log.d(TAG, "SSLSocketUseClientMode");
-              /*
-              OutputStream os = sslsocket.getOutputStream();
-              if (LOGD) Log.d(TAG, "outputstream got");
-              if (LOGD) Log.d(TAG, "Creating ssl session " + siteDataCurrent.tcpAddress + " on port:" + siteDataCurrent.destPort);
               sslsocket.getSession();
-              // TODO what would be more appropriate to send to server...
-              if (LOGD) Log.d(TAG, "Sending http get request " + siteDataCurrent.tcpAddress + " on port:" + siteDataCurrent.destPort);
-              os.write("GET / HTTP1.0\n\n".getBytes());
-              */
             }else{
               SiteData siteDataCached = ipPortSiteData.get(siteDataCurrent.tcpAddress + ":" + siteDataCurrent.destPort);
               if (LOGD) Log.d(TAG, "Already have candidate for " + siteDataCached.name + ". No need to fetch " + siteDataCurrent.tcpAddress + " on port:" + siteDataCurrent.destPort);
@@ -167,8 +157,6 @@ public class MyNetworkHostNameResolver {
       newSiteData.sourcePort = socket.getPort();
       newSiteData.hostName = hostName;
       newSiteData.name = "";
-    }else{
-
     }
     return newSiteData;
   }

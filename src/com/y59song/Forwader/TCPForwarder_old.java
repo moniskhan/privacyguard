@@ -18,18 +18,16 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
-import java.util.ArrayDeque;
 
 /**
  * Created by frank on 2014-03-27.
  */
-public class TCPForwarder extends AbsForwarder implements Runnable, ICommunication {
+public class TCPForwarder_old extends AbsForwarder implements ICommunication {
   private final String TAG = "TCPForwarder";
   protected Socket socket;
   private SocketChannel socketChannel;
   private TCPReceiver receiver;
   private TCPConnectionInfo conn_info;
-  private ArrayDeque<IPDatagram> packets;
 
   public enum Status {
     DATA, LISTEN, SYN_ACK_SENT, HALF_CLOSE_BY_CLIENT, HALF_CLOSE_BY_SERVER, CLOSED;
@@ -37,10 +35,9 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
 
   protected Status status;
 
-  public TCPForwarder(MyVpnService vpnService) {
+  public TCPForwarder_old(MyVpnService vpnService) {
     super(vpnService);
     status = Status.LISTEN;
-    packets = new ArrayDeque<IPDatagram>();
   }
 
   /*
@@ -51,33 +48,7 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
    * step 5 : update the datagram's checksum
    * step 6 : combine the tcp datagram and the ip datagram, update the ip header
    */
-
-  protected void forward (IPDatagram ipDatagram) {
-    synchronized (packets) {
-      packets.addLast(ipDatagram);
-      packets.notify();
-    }
-  }
-
-  @Override
-  public void run() {
-    IPDatagram temp;
-    while(!closed) {
-      synchronized (packets) {
-        while ((temp = packets.pollFirst()) == null) {
-          try {
-            packets.wait();
-          } catch (InterruptedException e) {
-            e.printStackTrace();
-          }
-        }
-      }
-      handle_packet(temp);
-    }
-  }
-
-
-  protected synchronized void handle_packet (IPDatagram ipDatagram) {
+  protected synchronized void forward (IPDatagram ipDatagram) {
     if(closed) return;
     byte flag;
     int len, rlen;
@@ -147,8 +118,7 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
       default:
         break;
     }
-    if(receiver == null || conn_info == null) return; // only if the client send ack
-    receiver.fetch(((TCPHeader)ipDatagram.payLoad().header()).getAck_num());
+    //if(receiver == null || conn_info == null) return; // only if the client send ack
     //receiver.fetch(((TCPHeader)ipDatagram.payLoad().header()).getAck_num(), len > 0);
   }
 
@@ -203,7 +173,7 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
         e.printStackTrace();
       }
     }
-    vpnService.getForwarderPools().release(this);
+    //vpnService.getForwarderPools().release(this);
   }
 
   @Override
@@ -216,7 +186,7 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
       socketChannel.configureBlocking(false);
       Selector selector = Selector.open();
       socketChannel.register(selector, SelectionKey.OP_READ);
-      receiver = new TCPReceiver(socketChannel, this, selector);
+      //receiver = new TCPReceiver(socketChannel, this, selector);
       new Thread(receiver).start();
       Log.d(TAG, "START");
     } catch (IOException e) {

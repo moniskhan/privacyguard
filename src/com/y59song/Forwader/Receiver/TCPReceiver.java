@@ -8,9 +8,8 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
+import java.util.ArrayDeque;
 import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Created by y59song on 03/04/14.
@@ -20,25 +19,17 @@ public class TCPReceiver implements Runnable {
   private SocketChannel socketChannel;
   private Selector selector;
   private TCPForwarder forwarder;
-  private LinkedList<byte[]> request;
+  private ArrayDeque<byte[]> responses;
+  private int current = 1, lastAck = 0;
 
-  private ConcurrentLinkedQueue<byte[]> responses = new ConcurrentLinkedQueue<byte[]>();
-  private int lastAck = 1, start = 1, seq = 1, counter = 0;
-  private final int maxlength = 2500, maxCounter = 2;
+  private final int maxlength = 2500;
   private ByteBuffer msg = ByteBuffer.allocate(maxlength);
-  private long lastTime = 0, timeout = 1000;
 
   public TCPReceiver(SocketChannel socketChannel, TCPForwarder forwarder, Selector selector) {
     this.socketChannel = socketChannel;
     this.forwarder = forwarder;
     this.selector = selector;
-    request = new LinkedList<byte[]>();
-  }
-
-  public void send(byte[] data) {
-    synchronized(request) {
-      request.add(data);
-    }
+    responses = new ArrayDeque<byte[]>();
   }
 
   @Override
@@ -51,12 +42,6 @@ public class TCPReceiver implements Runnable {
       }
       Log.d(TAG, "Selected");
       Iterator<SelectionKey> iterator = selector.selectedKeys().iterator();
-      try {
-        Thread.sleep(100);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-      Log.d(TAG, "Selected");
       while(iterator.hasNext()) {
         SelectionKey key = iterator.next();
         iterator.remove();
@@ -73,16 +58,15 @@ public class TCPReceiver implements Runnable {
             msg.flip();
             byte[] temp = new byte[length];
             msg.get(temp);
-            //responses.add(temp);
-            //Log.d(TAG, "" + seq + " , " + lastAck + " , " + length);
-            //if(seq == lastAck) {
-            //  fetch(seq, false);
-            //}
-            forwarder.receive(temp);
-            Thread.sleep(100);
-          } catch (IOException e) {
-            e.printStackTrace();
-          } catch (InterruptedException e) {
+            if(lastAck == current) {
+              forwarder.receive(temp);
+              current += temp.length;
+            } else {
+              synchronized (responses) {
+                responses.add(temp);
+              }
+            }
+          } catch (Exception e) {
             e.printStackTrace();
           }
         }
@@ -91,38 +75,14 @@ public class TCPReceiver implements Runnable {
     Log.d(TAG, "Thread exit");
   }
 
-  private void handleTimeout(int ack, boolean data) {
-
-  }
-
-  public synchronized void fetch(int ack, boolean data) {
-    long current = System.nanoTime();
-    Log.d(TAG, "Time : " + (current - lastTime));
-    if(current - lastTime > timeout) handleTimeout(ack, data);
-    Log.d(TAG, "ACK : " + ack + ", " + start);
-    if(ack == lastAck) counter ++;
-    if(counter > maxCounter) { // lost too much, just leave them
-      counter = 0;
-      while(seq > ack && !responses.isEmpty()) {
-        seq -= responses.element().length;
-        responses.remove();
-      }
-    }
+  public void fetch(int ack) {
+    byte[] toSend;
     lastAck = ack;
-    seq = lastAck;
-    while(start < ack && !responses.isEmpty()) {
-      start += responses.element().length;
-      responses.remove();
+    synchronized(responses) {
+      if(responses.isEmpty()) return;
+      else toSend = responses.remove();
     }
-    if(start < ack) {
-      Log.e(TAG, "ERROR : " + ack + ", " + start);
-      return;
-    }
-    assert(start == ack);
-    if(!responses.isEmpty()) {
-      seq += responses.element().length;
-      lastTime = System.nanoTime();
-      forwarder.receive(responses.element());
-    }
+    forwarder.receive(toSend);
+    current += toSend.length;
   }
 }

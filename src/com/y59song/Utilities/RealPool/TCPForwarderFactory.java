@@ -12,6 +12,7 @@ public class TCPForwarderFactory implements ObjectFactory<TCPForwarder> {
   public TCPForwarderFactory(MyVpnService vpnService) {
     this.vpnService = vpnService;
   }
+
   @Override
   public TCPForwarder createNew() {
     return new TCPForwarder(vpnService);

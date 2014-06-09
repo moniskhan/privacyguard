@@ -49,7 +49,7 @@ public class ForwarderPools {
 
   private AbsForwarder getByProtocol(byte protocol) {
     switch(protocol) {
-      case IPDatagram.TCP : ct ++; return tcpForwarderPool.get();
+      case IPDatagram.TCP : ct ++; TCPForwarder temp = tcpForwarderPool.get(); new Thread(temp).start(); return temp;
       case IPDatagram.UDP : cu ++; return udpForwarderPool.get();
       default:
         return null;
