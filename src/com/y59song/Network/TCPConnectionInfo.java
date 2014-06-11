@@ -15,11 +15,11 @@ public class TCPConnectionInfo extends ConnectionInfo {
   }
 
   public synchronized boolean setSeq(int seq) {
-    //if(this.seq == seq) return false;
+    boolean changed = this.seq != seq;
     this.seq = seq;
     ((TCPHeader)responseTransHeader).setSeq_num(seq);
     //Log.d("TCPConnectionInfo setSeq", "" + this.seq + "," + ((TCPHeader)responseTransHeader).getSeq_num());
-    return true;
+    return changed;
   }
 
   public synchronized boolean setAck(int ack) {

@@ -2,13 +2,10 @@ package com.y59song.Forwader.Receiver;
 
 import com.y59song.Forwader.TCPForwarder_old;
 
-import java.io.IOException;
 import java.net.Socket;
 import java.nio.ByteBuffer;
-import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
-import java.util.Iterator;
 import java.util.LinkedList;
 
 /**
@@ -38,36 +35,6 @@ public class TCPSender implements Runnable {
 
   @Override
   public void run() {
-    while(true) {
-      try {
-        selector.select(0);
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
-      Iterator<SelectionKey> iterator = selector.selectedKeys().iterator();
-      while(iterator.hasNext()) {
-        SelectionKey key = iterator.next();
-        iterator.remove();
-        if(key.isValid() && key.isWritable()) {
-          try {
-            synchronized(request) {
-              if(request.isEmpty()) {
-                break;
-              }
-              socketChannel.write(ByteBuffer.wrap(request.remove()));
-            }
-          } catch (IOException e) {
-            e.printStackTrace();
-          }
-        }
-      }
-      if(iterator.hasNext()) {
-        try {
-          Thread.sleep(100);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
-      }
-    }
+
   }
 }

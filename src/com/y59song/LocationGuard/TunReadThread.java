@@ -3,6 +3,7 @@ package com.y59song.LocationGuard;
 import android.util.Log;
 import com.y59song.Forwader.ForwarderPools;
 import com.y59song.Network.IP.IPDatagram;
+import com.y59song.Utilities.ByteOperations;
 
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
@@ -15,7 +16,7 @@ import java.util.ArrayDeque;
  */
 public class TunReadThread extends Thread {
   private final String TAG = TunReadThread.class.getSimpleName();
-  private final boolean DEBUG = true;
+  private final boolean DEBUG = false;
   private final FileInputStream localIn;
   private final int limit = 2048;
   private final MyVpnService vpnService;
@@ -42,6 +43,7 @@ public class TunReadThread extends Thread {
           packet.flip();
           if(DEBUG) Log.d(TAG, "Length : " + length);
           final IPDatagram ip = IPDatagram.create(packet);
+          if(DEBUG) Log.d(TAG, ByteOperations.byteArrayToHexString(ip.toByteArray()));
           if(ip != null) {
             synchronized (readQueue) {
               readQueue.addLast(ip);

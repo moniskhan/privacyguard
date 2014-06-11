@@ -3,7 +3,6 @@ package com.y59song.Forwader;
 import android.util.Log;
 import com.y59song.LocationGuard.MyVpnService;
 import com.y59song.Network.IP.IPDatagram;
-import com.y59song.Utilities.Pool.IPool;
 import com.y59song.Utilities.RealPool.BoundedBlockingPool;
 import com.y59song.Utilities.RealPool.ForwarderValidator;
 import com.y59song.Utilities.RealPool.TCPForwarderFactory;
@@ -16,11 +15,11 @@ import java.util.HashMap;
  * Created by frank on 2014-04-01.
  */
 public class ForwarderPools {
-  private IPool<UDPForwarder> udpForwarderPool;
-  private IPool<TCPForwarder> tcpForwarderPool;
+  private final String TAG = ForwarderPools.class.getSimpleName();
+  private BoundedBlockingPool<UDPForwarder> udpForwarderPool;
+  private BoundedBlockingPool<TCPForwarder> tcpForwarderPool;
   private static final int udpPoolSize = 50;
   private static final int tcpPoolSize = 100;
-  private int cu = 0, ct = 0;
   private HashMap<Integer, AbsForwarder> portToForwarder;
 
   public ForwarderPools(MyVpnService vpnService) {
@@ -36,7 +35,7 @@ public class ForwarderPools {
   }
 
   public AbsForwarder get(int port, byte protocol) {
-    Log.d("ForwarderPools", "" + cu + ", " + ct);
+    Log.d(TAG, "GET : " + udpForwarderPool.getSize() + ", " + tcpForwarderPool.getSize());
     if(portToForwarder.containsKey(port) && !portToForwarder.get(port).isClosed())
       return portToForwarder.get(port);
     else {
@@ -49,21 +48,21 @@ public class ForwarderPools {
 
   private AbsForwarder getByProtocol(byte protocol) {
     switch(protocol) {
-      case IPDatagram.TCP : ct ++; TCPForwarder temp = tcpForwarderPool.get(); new Thread(temp).start(); return temp;
-      case IPDatagram.UDP : cu ++; return udpForwarderPool.get();
+      case IPDatagram.TCP : TCPForwarder temp = tcpForwarderPool.get(); new Thread(temp).start(); return temp;
+      case IPDatagram.UDP : return udpForwarderPool.get();
       default:
         return null;
     }
   }
 
   public void release(UDPForwarder udpForwarder) {
-    cu --;
+    Log.d(TAG, "Release : " + udpForwarderPool.getSize() + ", " + tcpForwarderPool.getSize());
     udpForwarderPool.release(udpForwarder);
     portToForwarder.values().removeAll(Collections.singleton(udpForwarder));
   }
 
   public void release(TCPForwarder tcpForwarder) {
-    ct --;
+    Log.d(TAG, "Release : " + udpForwarderPool.getSize() + ", " + tcpForwarderPool.getSize());
     tcpForwarderPool.release(tcpForwarder);
     portToForwarder.values().removeAll(Collections.singleton(tcpForwarder));
   }

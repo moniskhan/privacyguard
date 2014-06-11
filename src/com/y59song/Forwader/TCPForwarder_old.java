@@ -1,7 +1,7 @@
 package com.y59song.Forwader;
 
 import android.util.Log;
-import com.y59song.Forwader.Receiver.TCPReceiver;
+import com.y59song.Forwader.Receiver.TCPForwarderWorker;
 import com.y59song.LocationGuard.MyVpnService;
 import com.y59song.Network.IP.IPDatagram;
 import com.y59song.Network.IP.IPPayLoad;
@@ -26,7 +26,7 @@ public class TCPForwarder_old extends AbsForwarder implements ICommunication {
   private final String TAG = "TCPForwarder";
   protected Socket socket;
   private SocketChannel socketChannel;
-  private TCPReceiver receiver;
+  private TCPForwarderWorker receiver;
   private TCPConnectionInfo conn_info;
 
   public enum Status {

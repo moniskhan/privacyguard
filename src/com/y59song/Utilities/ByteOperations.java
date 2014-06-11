@@ -53,6 +53,16 @@ public class ByteOperations {
     return ret;
   }
 
+  public static byte[] byteArrayAppend(byte[] array, int length) {
+    if(array.length >= length) return array;
+    byte[] ret = new byte[length];
+    for(int i = 0; i < length; i ++) {
+      if(i < array.length) ret[i] = array[i];
+      else ret[i] = 0;
+    }
+    return ret;
+  }
+
   public static byte[] computeCheckSum(byte[] data) {
     int result = 0;
     if(data.length % 2 != 0) result = data[data.length - 1] << 8;

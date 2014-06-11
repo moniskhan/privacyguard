@@ -60,6 +60,14 @@ public final class BoundedBlockingPool<T>
     throw new IllegalStateException("Pool is already shutdown");
   }
 
+  public int getSize() {
+    int size = 0;
+    synchronized(objects) {
+      size = objects.size();
+    }
+    return size;
+  }
+
   public void shutdown() {
     shutdownCalled = true;
     executor.shutdownNow();

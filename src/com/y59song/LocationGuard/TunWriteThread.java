@@ -3,7 +3,9 @@ package com.y59song.LocationGuard;
 import android.util.Log;
 import com.y59song.Utilities.ByteOperations;
 
-import java.io.*;
+import java.io.FileDescriptor;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayDeque;
 
 /**
@@ -11,7 +13,7 @@ import java.util.ArrayDeque;
  */
 public class TunWriteThread extends Thread {
   private final String TAG = TunWriteThread.class.getSimpleName();
-  private final boolean DEBUG = false;
+  private final boolean DEBUG = true;
   private final FileOutputStream localOut;
   private final ArrayDeque<byte[]> writeQueue = new ArrayDeque<byte[]>();
   private final MyVpnService vpnService;
@@ -42,8 +44,9 @@ public class TunWriteThread extends Thread {
         }
       }
       try {
-        if(DEBUG) Log.d(TAG, ByteOperations.byteArrayToHexString(temp));
-        localOut.write(temp);
+        if(DEBUG) Log.d(TAG, "" + temp.length);
+        localOut.write(ByteOperations.byteArrayAppend(temp, 2048));
+        localOut.flush();
       } catch (Exception e) {
         e.printStackTrace();
       }
@@ -51,10 +54,19 @@ public class TunWriteThread extends Thread {
   }
 
   public void write(byte[] data) {
+    /*
+    try {
+      localOut.write(data);
+      localOut.flush();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }*/
+
     synchronized(writeQueue) {
       writeQueue.addLast(data);
       writeQueue.notify();
     }
+
   }
 
   private void clean() throws IOException {

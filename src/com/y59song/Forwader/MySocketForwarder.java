@@ -52,7 +52,7 @@ public class MySocketForwarder extends Thread {
     try {
       byte[] buff = new byte[4096];
       int got;
-      Log.d(TAG, "Running");
+      //Log.d(TAG, "Running");
       while ((got = in.read(buff)) > -1){
         if(DEBUG) Log.d(TAG + getName(), ByteOperations.byteArrayToString(buff, 0, got));
         out.write(buff, 0, got);
