@@ -248,7 +248,8 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
       }
     }
     Log.d(TAG, "Release");
-    vpnService.getForwarderPools().release(this);
+    ForwarderPools temp = vpnService.getForwarderPools();
+    temp.release(this);
     Log.d(TAG, "Released");
   }
 

@@ -1,14 +1,9 @@
 package com.y59song.Forwader;
 
-import android.util.Log;
 import com.y59song.LocationGuard.MyVpnService;
 import com.y59song.Network.IP.IPDatagram;
 import com.y59song.Utilities.RealPool.BoundedBlockingPool;
-import com.y59song.Utilities.RealPool.ForwarderValidator;
-import com.y59song.Utilities.RealPool.TCPForwarderFactory;
-import com.y59song.Utilities.RealPool.UDPForwarderFactory;
 
-import java.util.Collections;
 import java.util.HashMap;
 
 /**
@@ -21,8 +16,12 @@ public class ForwarderPools {
   private static final int udpPoolSize = 50;
   private static final int tcpPoolSize = 100;
   private HashMap<Integer, AbsForwarder> portToForwarder;
+  private MyVpnService vpnService;
 
   public ForwarderPools(MyVpnService vpnService) {
+    this.vpnService = vpnService;
+
+    /*
     udpForwarderPool = new BoundedBlockingPool<UDPForwarder>(
       udpPoolSize,
       new ForwarderValidator(),
@@ -31,11 +30,12 @@ public class ForwarderPools {
       tcpPoolSize,
       new ForwarderValidator(),
       new TCPForwarderFactory(vpnService));
+      */
     portToForwarder = new HashMap<Integer, AbsForwarder>();
   }
 
   public AbsForwarder get(int port, byte protocol) {
-    Log.d(TAG, "GET : " + udpForwarderPool.getSize() + ", " + tcpForwarderPool.getSize());
+    //Log.d(TAG, "GET : " + udpForwarderPool.getSize() + ", " + tcpForwarderPool.getSize());
     if(portToForwarder.containsKey(port) && !portToForwarder.get(port).isClosed())
       return portToForwarder.get(port);
     else {
@@ -47,23 +47,30 @@ public class ForwarderPools {
   }
 
   private AbsForwarder getByProtocol(byte protocol) {
+    /*
     switch(protocol) {
       case IPDatagram.TCP : TCPForwarder temp = tcpForwarderPool.get(); new Thread(temp).start(); return temp;
       case IPDatagram.UDP : return udpForwarderPool.get();
       default:
         return null;
     }
+    */
+    switch(protocol) {
+      case IPDatagram.TCP : TCPForwarder temp = new TCPForwarder(vpnService); new Thread(temp).start(); return temp;
+      case IPDatagram.UDP : return new UDPForwarder(vpnService);
+      default: return null;
+    }
   }
 
   public void release(UDPForwarder udpForwarder) {
-    Log.d(TAG, "Release : " + udpForwarderPool.getSize() + ", " + tcpForwarderPool.getSize());
-    udpForwarderPool.release(udpForwarder);
-    portToForwarder.values().removeAll(Collections.singleton(udpForwarder));
+    //Log.d(TAG, "Release : " + udpForwarderPool.getSize() + ", " + tcpForwarderPool.getSize());
+    //udpForwarderPool.release(udpForwarder);
+    //portToForwarder.values().removeAll(Collections.singleton(udpForwarder));
   }
 
   public void release(TCPForwarder tcpForwarder) {
-    Log.d(TAG, "Release : " + udpForwarderPool.getSize() + ", " + tcpForwarderPool.getSize());
-    tcpForwarderPool.release(tcpForwarder);
-    portToForwarder.values().removeAll(Collections.singleton(tcpForwarder));
+    //Log.d(TAG, "Release : " + udpForwarderPool.getSize() + ", " + tcpForwarderPool.getSize());
+    //tcpForwarderPool.release(tcpForwarder);
+    //portToForwarder.values().removeAll(Collections.singleton(tcpForwarder));
   }
 }

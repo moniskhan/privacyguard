@@ -3,6 +3,7 @@ package com.y59song.LocationGuard;
 import android.content.Intent;
 import android.net.VpnService;
 import android.os.ParcelFileDescriptor;
+import android.util.Log;
 import com.y59song.Forwader.ForwarderPools;
 import com.y59song.Network.LocalServer;
 import com.y59song.Utilities.MyClientResolver;
@@ -134,6 +135,7 @@ public class MyVpnService extends VpnService implements Runnable{
   }
 
   public ForwarderPools getForwarderPools() {
+    Log.d(TAG, "GET Pools");
     return forwarderPools;
   }
 }
