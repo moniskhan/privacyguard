@@ -19,10 +19,11 @@ public class TCPForwarderWorker extends Thread {
   private SocketChannel socketChannel;
   private Selector selector;
   private TCPForwarder forwarder;
-  private final int limit = 2048, resend_duration = 1000, maxCount = 5;
-  private int counter = 0;
+  private final int limit = 2048;
+  private Integer lastAck;
   private ByteBuffer msg = ByteBuffer.allocate(limit);
   private ArrayDeque<byte[]> requests = new ArrayDeque<byte[]>();
+  private ArrayDeque<byte[]> responses = new ArrayDeque<byte[]>();
   private Sender sender;
 
   public TCPForwarderWorker(SocketChannel socketChannel, TCPForwarder forwarder, Selector selector) {
@@ -80,6 +81,11 @@ public class TCPForwarderWorker extends Thread {
       } catch (IOException e) {
         e.printStackTrace();
       }
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
       Iterator<SelectionKey> iterator = selector.selectedKeys().iterator();
       while(iterator.hasNext() && !forwarder.isClosed()) {
         SelectionKey key = iterator.next();
@@ -96,16 +102,24 @@ public class TCPForwarderWorker extends Thread {
             forwarder.receive(temp);
           } catch (IOException e) {
             e.printStackTrace();
+            Log.d(TAG, "" + socketChannel.socket().getLocalPort());
           }
         }
       }
-      try {
-        Thread.sleep(100);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-
     }
     sender.interrupt();
   }
+
+  /*
+  public void setLastAck(int ack) {
+    synchronized(lastAck) {
+      if(lastAck < ack) {
+        synchronized(responses) {
+
+        }
+      }
+      lastAck = ack;
+    }
+  }
+  */
 }

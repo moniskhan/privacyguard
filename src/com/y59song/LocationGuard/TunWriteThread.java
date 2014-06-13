@@ -64,7 +64,8 @@ public class TunWriteThread extends Thread {
 
     synchronized(writeQueue) {
       writeQueue.addLast(data);
-      writeQueue.notify();
+      if(writeQueue.size() == 1)
+        writeQueue.notify();
     }
 
   }
