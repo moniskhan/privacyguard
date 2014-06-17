@@ -5,7 +5,6 @@ import com.y59song.Forwader.Receiver.TCPForwarderWorker;
 import com.y59song.LocationGuard.MyVpnService;
 import com.y59song.Network.IP.IPDatagram;
 import com.y59song.Network.IP.IPPayLoad;
-import com.y59song.Network.LocalServer;
 import com.y59song.Network.TCP.TCPDatagram;
 import com.y59song.Network.TCP.TCPHeader;
 import com.y59song.Network.TCPConnectionInfo;
@@ -54,10 +53,13 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
    */
 
   protected void forward (IPDatagram ipDatagram) {
+    handle_packet(ipDatagram);
+    /*
     synchronized (packets) {
       packets.addLast(ipDatagram);
       packets.notify();
     }
+    */
   }
 
   @Override
@@ -110,12 +112,8 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
     int len = tcpDatagram.virtualLength(), rlen = tcpDatagram.dataLength();
     boolean changed = conn_info.setSeq(((TCPHeader) tcpDatagram.header()).getAck_num());
     if (rlen != 0) {
-      if(rlen == 314) {
-        conn_info.setAck(((TCPHeader)tcpDatagram.header()).getSeq_num() + rlen);
-      }
-      //conn_info.increaseAck(len);
-      else forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.ACK), null));
       send(tcpDatagram);
+      forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.ACK), null));
     } else if(flag == TCPHeader.FINACK) {
       forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.ACK), null));
       forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.FINACK), null));
@@ -165,10 +163,10 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
       case DATA:
         assert((flag & TCPHeader.ACK) != 0);
         if(rlen > 0) { // send data
+          send(ipDatagram.payLoad());
           conn_info.increaseSeq(
             forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.ACK), null))
           );
-          send(ipDatagram.payLoad());
         } else if(flag == TCPHeader.FINACK) { // FIN
           conn_info.increaseSeq(
             forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.ACK), null))
@@ -219,7 +217,6 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
 
   @Override
   public void send(IPPayLoad payLoad) {
-    //receiver.clear(((TCPHeader)payLoad.header()).getAck_num());
     if(isClosed()) {
       status = Status.HALF_CLOSE_BY_SERVER;
       conn_info.increaseSeq(
@@ -251,9 +248,11 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
         e.printStackTrace();
       }
     }
+    /*
     Log.d(TAG, "Release");
     ForwarderPools temp = vpnService.getForwarderPools();
     temp.release(this);
+    */
     Log.d(TAG, "Released");
   }
 
@@ -262,10 +261,10 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
     try {
       if(socketChannel == null) socketChannel = SocketChannel.open();
       socket = socketChannel.socket();
-      socket.bind(new InetSocketAddress(InetAddress.getLocalHost(), src_port));
-      socketChannel.connect(new InetSocketAddress(LocalServer.port));
-      //vpnService.protect(socket);
-      //socketChannel.connect(new InetSocketAddress(srcAddress, src_port));
+      //socket.bind(new InetSocketAddress(InetAddress.getLocalHost(), src_port));
+      //socketChannel.connect(new InetSocketAddress(LocalServer.port));
+      vpnService.protect(socket);
+      socketChannel.connect(new InetSocketAddress(srcAddress, src_port));
       socketChannel.configureBlocking(false);
       Selector selector = Selector.open();
       socketChannel.register(selector, SelectionKey.OP_READ);

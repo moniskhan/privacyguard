@@ -56,7 +56,8 @@ public class ForwarderPools {
     }
     */
     switch(protocol) {
-      case IPDatagram.TCP : TCPForwarder temp = new TCPForwarder(vpnService); new Thread(temp).start(); return temp;
+      //case IPDatagram.TCP : TCPForwarder temp = new TCPForwarder(vpnService); new Thread(temp).start(); return temp;
+      case IPDatagram.TCP : return new TCPForwarder(vpnService);
       case IPDatagram.UDP : return new UDPForwarder(vpnService);
       default: return null;
     }

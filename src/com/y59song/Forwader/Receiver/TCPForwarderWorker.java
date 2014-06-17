@@ -44,6 +44,7 @@ public class TCPForwarderWorker extends Thread {
       byte[] temp;
       while (!socketChannel.isConnected()) {
         try {
+          Log.d(TAG, "Gonna sleep");
           Thread.sleep(100);
         } catch (InterruptedException e) {
           e.printStackTrace();
@@ -81,11 +82,6 @@ public class TCPForwarderWorker extends Thread {
       } catch (IOException e) {
         e.printStackTrace();
       }
-      try {
-        Thread.sleep(100);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
       Iterator<SelectionKey> iterator = selector.selectedKeys().iterator();
       while(iterator.hasNext() && !forwarder.isClosed()) {
         SelectionKey key = iterator.next();
@@ -105,21 +101,13 @@ public class TCPForwarderWorker extends Thread {
             Log.d(TAG, "" + socketChannel.socket().getLocalPort());
           }
         }
+        if(iterator.hasNext() && iterator.next().isReadable()) try {
+          Thread.sleep(50);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
       }
     }
     sender.interrupt();
   }
-
-  /*
-  public void setLastAck(int ack) {
-    synchronized(lastAck) {
-      if(lastAck < ack) {
-        synchronized(responses) {
-
-        }
-      }
-      lastAck = ack;
-    }
-  }
-  */
 }

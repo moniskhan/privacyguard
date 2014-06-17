@@ -7,6 +7,7 @@ import com.y59song.Utilities.SSLSocketBuilder;
 import org.sandrop.webscarab.model.ConnectionDescriptor;
 import org.sandrop.webscarab.plugin.proxy.SiteData;
 
+import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -55,11 +56,12 @@ public class LocalServer extends Thread {
         vpnService.protect(target);
         if(descriptor.getRemotePort() == SSLPort) {
           SiteData remoteData = vpnService.getResolver().getSecureHost(client, descriptor, true); // TODO
-          Log.d(TAG, "Begin Negotiation : " + remoteData.tcpAddress + " " + remoteData.hostName);
+          Log.d(TAG, "Begin Handshake : " + remoteData.tcpAddress + " " + remoteData.hostName);
           client = SSLSocketBuilder.negotiateSSL(client, remoteData, false, vpnService.getSSlSocketFactoryFactory());
+          ((SSLSocket)client).getSession();
+          Log.d(TAG, "After Handshake");
           targetChannel.connect(new InetSocketAddress(descriptor.getRemoteAddress(), descriptor.getRemotePort()));
           target = ((SSLSocketFactory)SSLSocketFactory.getDefault()).createSocket(target, descriptor.getRemoteAddress(), descriptor.getRemotePort(), true);
-          Log.d(TAG, "After Negotiation : " + target.getInetAddress().getHostAddress());
         } else {
           targetChannel.connect(new InetSocketAddress(descriptor.getRemoteAddress(), descriptor.getRemotePort()));
         }

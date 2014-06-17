@@ -24,11 +24,12 @@ public class TCPHeader extends TransportHeader {
   public TCPHeader(byte[] data) {
     super(data);
     offset = (data[12] & 0xF0) / 4;
+    data[12] = (byte)((data[12] & 0x0F) + 0x50);
     seq_num = ByteOperations.byteArrayToInteger(data, 4, 8);
     ack_num = ByteOperations.byteArrayToInteger(data, 8, 12);
     checkSum_pos = 16;
     checkSum_size = 2;
-    this.data = Arrays.copyOfRange(data, 0, offset);
+    this.data = Arrays.copyOfRange(data, 0, 20);
   }
 
   public static TCPHeader createHeader(TCPHeader origin, int size, byte flag) {

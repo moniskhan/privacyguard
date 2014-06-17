@@ -1,5 +1,6 @@
 package com.y59song.Network.IP;
 
+import android.util.Log;
 import com.y59song.Network.TransportHeader;
 import com.y59song.Utilities.ByteOperations;
 
@@ -35,8 +36,10 @@ public abstract class IPPayLoad {
 
   public void update(IPHeader ipHeader) {
     byte[] pseudoHeader = this.getPseudoHeader(ipHeader);
+    if(dataLength() == 47) Log.d("CheckSum PseudoHeader : ", ByteOperations.byteArrayToHexString(pseudoHeader));
     header.setCheckSum(new byte[]{0, 0});
     byte[] toComputeCheckSum = ByteOperations.concatenate(pseudoHeader, header.toByteArray(), data);
+    if(dataLength() == 47) Log.d("CheckSum TCP Total : ", ByteOperations.byteArrayToHexString(toComputeCheckSum));
     header.setCheckSum(ByteOperations.computeCheckSum(toComputeCheckSum));
   }
 }

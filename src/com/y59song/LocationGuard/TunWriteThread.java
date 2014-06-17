@@ -1,7 +1,6 @@
 package com.y59song.LocationGuard;
 
 import android.util.Log;
-import com.y59song.Utilities.ByteOperations;
 
 import java.io.FileDescriptor;
 import java.io.FileOutputStream;
@@ -45,7 +44,8 @@ public class TunWriteThread extends Thread {
       }
       try {
         if(DEBUG) Log.d(TAG, "" + temp.length);
-        localOut.write(ByteOperations.byteArrayAppend(temp, 2048));
+        //if(temp.length == 119) temp[118] = 0;
+        localOut.write(temp);
         localOut.flush();
       } catch (Exception e) {
         e.printStackTrace();
@@ -54,14 +54,6 @@ public class TunWriteThread extends Thread {
   }
 
   public void write(byte[] data) {
-    /*
-    try {
-      localOut.write(data);
-      localOut.flush();
-    } catch (IOException e) {
-      e.printStackTrace();
-    }*/
-
     synchronized(writeQueue) {
       writeQueue.addLast(data);
       if(writeQueue.size() == 1)

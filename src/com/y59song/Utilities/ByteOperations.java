@@ -65,13 +65,13 @@ public class ByteOperations {
 
   public static byte[] computeCheckSum(byte[] data) {
     int result = 0;
-    if(data.length % 2 != 0) result = data[data.length - 1] << 8;
-    for(int i = 0; i < data.length / 2; i ++) {
+    if(data.length % 2 != 0) result = ((data[data.length - 1] & 0xFF) << 8);
+    for(int i = 0; i < data.length / 2; i ++)
       result += ((data[2 * i] & 0xFF) << 8) + (data[2 * i + 1] & 0xFF);
+    while((result >> 16) > 0) {
       int carry = result >> 16;
       result &= 0xFFFF;
       result += carry;
-      //System.out.println(Integer.toHexString(result));
     }
     result = ~result;
     return new byte[]{(byte)((result >> 8) & 0xFF), (byte)(result & 0xFF)};

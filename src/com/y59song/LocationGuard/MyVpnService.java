@@ -64,8 +64,8 @@ public class MyVpnService extends VpnService implements Runnable{
 
   private void setup_network() {
     Builder b = new Builder();
-    b.addAddress("10.0.0.0", 28);
-    //b.addRoute("173.194.43.116", 32);
+    b.addAddress("10.8.0.1", 32);
+    b.addRoute("173.194.43.116", 32);
     //b.addRoute("192.30.252.130", 32);
     b.addRoute("72.21.215.233", 32);
     //b.addRoute("0.0.0.0", 0);
