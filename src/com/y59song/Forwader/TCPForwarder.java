@@ -5,10 +5,10 @@ import com.y59song.Forwader.Receiver.TCPForwarderWorker;
 import com.y59song.LocationGuard.MyVpnService;
 import com.y59song.Network.IP.IPDatagram;
 import com.y59song.Network.IP.IPPayLoad;
+import com.y59song.Network.LocalServer;
 import com.y59song.Network.TCP.TCPDatagram;
 import com.y59song.Network.TCP.TCPHeader;
 import com.y59song.Network.TCPConnectionInfo;
-import com.y59song.Utilities.ByteOperations;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -198,7 +198,6 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
       default:
         break;
     }
-    //receiver.setLastAck(((TCPHeader)ipDatagram.payLoad().header()).getAck_num());
   }
 
   @Override
@@ -207,7 +206,6 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
     conn_info.increaseSeq(
       forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.DATA), response))
     );
-    Log.d(TAG, "Receive Response : " + response.length);
   }
 
   @Override
@@ -223,7 +221,6 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
         forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.FINACK), null))
       );
     }
-    Log.d(TAG, "" + conn_info.getTransHeader().getSrcPort() + " " + ByteOperations.byteArrayToString(payLoad.data()));
     receiver.send(payLoad.data());
   }
 
@@ -248,11 +245,7 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
         e.printStackTrace();
       }
     }
-    /*
-    Log.d(TAG, "Release");
-    ForwarderPools temp = vpnService.getForwarderPools();
-    temp.release(this);
-    */
+    if(receiver != null && receiver.isAlive()) receiver.close();
     Log.d(TAG, "Released");
   }
 
@@ -261,16 +254,13 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
     try {
       if(socketChannel == null) socketChannel = SocketChannel.open();
       socket = socketChannel.socket();
-      //socket.bind(new InetSocketAddress(InetAddress.getLocalHost(), src_port));
-      //socketChannel.connect(new InetSocketAddress(LocalServer.port));
-      vpnService.protect(socket);
-      socketChannel.connect(new InetSocketAddress(srcAddress, src_port));
+      socket.bind(new InetSocketAddress(InetAddress.getLocalHost(), src_port));
+      socketChannel.connect(new InetSocketAddress(LocalServer.port));
       socketChannel.configureBlocking(false);
       Selector selector = Selector.open();
       socketChannel.register(selector, SelectionKey.OP_READ);
       receiver = new TCPForwarderWorker(socketChannel, this, selector);
       receiver.start();
-      Log.d(TAG, "START");
     } catch (IOException e) {
       e.printStackTrace();
     }

@@ -20,10 +20,9 @@ public class TCPForwarderWorker extends Thread {
   private Selector selector;
   private TCPForwarder forwarder;
   private final int limit = 2048;
-  private Integer lastAck;
+  private final boolean DEBUG = true;
   private ByteBuffer msg = ByteBuffer.allocate(limit);
   private ArrayDeque<byte[]> requests = new ArrayDeque<byte[]>();
-  private ArrayDeque<byte[]> responses = new ArrayDeque<byte[]>();
   private Sender sender;
 
   public TCPForwarderWorker(SocketChannel socketChannel, TCPForwarder forwarder, Selector selector) {
@@ -40,25 +39,31 @@ public class TCPForwarderWorker extends Thread {
   }
 
   public class Sender extends Thread {
+    private final String TAG = "TCPSender";
     public void run() {
+      if(DEBUG) Log.d(TAG, "Sender start");
       byte[] temp;
-      while (!socketChannel.isConnected()) {
+      while (!forwarder.isClosed() && !socketChannel.isConnected()) {
         try {
-          Log.d(TAG, "Gonna sleep");
+          if(DEBUG) Log.d(TAG, "Gonna sleep");
           Thread.sleep(100);
         } catch (InterruptedException e) {
           e.printStackTrace();
+          if(DEBUG) Log.d(TAG, "Sender stop");
+          return;
         }
       }
-      while (socketChannel.isOpen()) {
+      while (!forwarder.isClosed() && socketChannel.isOpen()) {
         synchronized (requests) {
           while ((temp = requests.pollFirst()) == null) {
             try {
               requests.wait();
             } catch (InterruptedException e) {
+              if(DEBUG) Log.d(TAG, "Sender stop");
               return;
             }
             if (isInterrupted()) {
+              if(DEBUG) Log.d(TAG, "Sender stop");
               return;
             } else continue;
           }
@@ -66,17 +71,20 @@ public class TCPForwarderWorker extends Thread {
         try {
           socketChannel.write(ByteBuffer.wrap(temp));
         } catch (Exception e) {
+          Log.d(TAG, socketChannel.socket().getLocalPort() + " " + socketChannel.socket().getPort());
           e.printStackTrace();
         }
       }
+      if(DEBUG) Log.d(TAG, "Sender stop");
     }
   }
 
   @Override
   public void run() {
+    if(DEBUG) Log.d(TAG, "Receiver start");
     sender = new Sender();
     sender.start();
-    while(!forwarder.isClosed()) {
+    while(!forwarder.isClosed() && selector.isOpen()) {
       try {
         selector.select(0);
       } catch (IOException e) {
@@ -92,22 +100,21 @@ public class TCPForwarderWorker extends Thread {
             int length = socketChannel.read(msg);
             if(length <= 0) continue;
             msg.flip();
-            Log.d(TAG, "" + msg.remaining() + ", " + length);
             byte[] temp = new byte[length];
             msg.get(temp);
             forwarder.receive(temp);
           } catch (IOException e) {
+            Log.d(TAG, socketChannel.socket().getLocalPort() + " " + socketChannel.socket().getPort());
             e.printStackTrace();
-            Log.d(TAG, "" + socketChannel.socket().getLocalPort());
           }
-        }
-        if(iterator.hasNext() && iterator.next().isReadable()) try {
-          Thread.sleep(50);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
         }
       }
     }
+    if(DEBUG) Log.d(TAG, "Receiver stop");
+    sender.interrupt();
+  }
+
+  public void close() {
     sender.interrupt();
   }
 }

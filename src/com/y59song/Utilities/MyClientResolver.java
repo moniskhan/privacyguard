@@ -23,14 +23,12 @@ import java.util.regex.Pattern;
 public class MyClientResolver implements IClientResolver {
 
 
-  private static boolean LOGD = true;
+  private static boolean DEBUG = false;
   private static String TAG = MyClientResolver.class.getSimpleName();
 
-  private Context mContext;
   private PackageManager packageManager;
 
   public MyClientResolver(Context context){
-    this.mContext = context;
     packageManager = context.getPackageManager();
   }
 
@@ -41,19 +39,14 @@ public class MyClientResolver implements IClientResolver {
     String address = socket.getInetAddress().getHostAddress();
     BufferedReader reader = null;
     try {
-
-      String ipv4Address = NetworkInfo.getIPAddress(true);
-      String ipv6Address = NetworkInfo.getIPAddress(false);
-
-      boolean hasIPv6 = (ipv6Address.length() > 0); //TODO use this value to skip ipv6 check, eventually
-
       File tcp = new File(NetworkInfo.TCP_6_FILE_PATH);
       reader = new BufferedReader(new FileReader(tcp));
-      String line = "";
+      String line;
       StringBuilder builder = new StringBuilder();
 
       // find line that has port number inside
       String hexPort = Integer.toHexString(port);
+      if(DEBUG) Log.d(TAG, hexPort);
       while ((line = reader.readLine()) != null) {
         if (line.toUpperCase().contains(hexPort.toUpperCase())){
           builder.append(line);
@@ -62,6 +55,7 @@ public class MyClientResolver implements IClientResolver {
       reader.close();
 
       String content = builder.toString();
+      if(DEBUG) Log.d(TAG, content);
       if (content != null && content .length() > 0){
         Matcher m6 = Pattern.compile(NetworkInfo.TCP_6_PATTERN, Pattern.CASE_INSENSITIVE | Pattern.UNIX_LINES | Pattern.DOTALL).matcher(content);
 
@@ -76,10 +70,8 @@ public class MyClientResolver implements IClientResolver {
           int dstPort = Integer.valueOf(dstPortEntry, 16);
           int connStatus = Integer.valueOf(status, 16);
 
-          if (LOGD) Log.d(TAG, "parsing v6 line for data: " + srcAddressEntry + " " + srcPort + " " + uidEntry);
           srcAddressEntry = getIPAddrByHex(srcAddressEntry);
           dstAddressEntry = getIPAddrByHex(dstAddressEntry);
-          if (LOGD) Log.d(TAG, "parsing v6 line for data: " + srcAddressEntry + " " + srcPort + " " + uidEntry);
 
           if (srcPort == port && !srcAddressEntry.contains("7F00:0001")) {
             String[] packagesForUid = packageManager.getPackagesForUid(uidEntry);
@@ -99,7 +91,6 @@ public class MyClientResolver implements IClientResolver {
 
       tcp = new File(NetworkInfo.TCP_4_FILE_PATH);
       reader = new BufferedReader(new FileReader(tcp));
-      line = "";
       builder = new StringBuilder();
 
       while ((line = reader.readLine()) != null) {
@@ -111,8 +102,10 @@ public class MyClientResolver implements IClientResolver {
       reader.close();
 
       content = builder.toString();
+      if(DEBUG) Log.d(TAG, content);
 
-      if (content != null && content .length() > 0){
+      if (content != null && content.length() > 0){
+        if(DEBUG) Log.d(TAG, NetworkInfo.TCP_4_PATTERN);
         Matcher m4 = Pattern.compile(NetworkInfo.TCP_4_PATTERN, Pattern.CASE_INSENSITIVE | Pattern.UNIX_LINES | Pattern.DOTALL).matcher(content);
 
         while (m4.find()) {
@@ -125,11 +118,10 @@ public class MyClientResolver implements IClientResolver {
           int srcPort = Integer.valueOf(srcPortEntry, 16);
           int dstPort = Integer.valueOf(dstPortEntry, 16);
           int status  = Integer.valueOf(connStatus, 16);
+          if(DEBUG) Log.d(TAG, srcPortEntry);
 
-          if (LOGD) Log.d(TAG, "parsing v4 line for data: " + srcAddressEntry + " " +  srcPortEntry + " " + uidEntry);
           srcAddressEntry = getIPAddrByHex(srcAddressEntry);
           dstAddressEntry = getIPAddrByHex(dstAddressEntry);
-          if (LOGD) Log.d(TAG, "parsing v4 line for data: " + srcAddressEntry + " " +  srcPort + " " + uidEntry);
 
           if (srcPort == port && srcAddressEntry != "127.0.0.1") {
             String[] packagesForUid = packageManager.getPackagesForUid(uidEntry);
@@ -147,11 +139,11 @@ public class MyClientResolver implements IClientResolver {
       }
 
       // nothing found we create descriptor with what we got as input
-      if (LOGD) Log.d(TAG, "No data for " + address + ":" + port);
+      if (DEBUG) Log.d(TAG, "No data for " + address + ":" + port);
       return null;
 
     } catch (Exception e) {
-      Log.e(TAG, "parsing client data error : " + e.getMessage());
+      if(DEBUG) Log.e(TAG, "parsing client data error : " + e.getMessage());
       if (reader != null){
         try {
           reader.close();
@@ -160,7 +152,7 @@ public class MyClientResolver implements IClientResolver {
         }
       }
     }
-    if (LOGD) Log.d(TAG, "No data for " + address + ":" + port);
+    if (DEBUG) Log.d(TAG, "No data for " + address + ":" + port);
     return null;
   }
 
@@ -185,6 +177,5 @@ public class MyClientResolver implements IClientResolver {
     }
     return ret.substring(1);
   }
-
 }
 

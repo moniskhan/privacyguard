@@ -55,11 +55,11 @@ public class LocalServer extends Thread {
         Socket target = targetChannel.socket();
         vpnService.protect(target);
         if(descriptor.getRemotePort() == SSLPort) {
-          SiteData remoteData = vpnService.getResolver().getSecureHost(client, descriptor, true); // TODO
-          Log.d(TAG, "Begin Handshake : " + remoteData.tcpAddress + " " + remoteData.hostName);
+          SiteData remoteData = vpnService.getResolver().getSecureHost(client, descriptor, true);
+          if(DEBUG) Log.d(TAG, "Begin Handshake : " + remoteData.tcpAddress + " " + remoteData.hostName);
           client = SSLSocketBuilder.negotiateSSL(client, remoteData, false, vpnService.getSSlSocketFactoryFactory());
           ((SSLSocket)client).getSession();
-          Log.d(TAG, "After Handshake");
+          if(DEBUG) Log.d(TAG, "After Handshake");
           targetChannel.connect(new InetSocketAddress(descriptor.getRemoteAddress(), descriptor.getRemotePort()));
           target = ((SSLSocketFactory)SSLSocketFactory.getDefault()).createSocket(target, descriptor.getRemoteAddress(), descriptor.getRemotePort(), true);
         } else {

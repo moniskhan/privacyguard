@@ -53,7 +53,6 @@ public class UDPForwarder extends AbsForwarder implements ICommunication {
   @Override
   public void setup(InetAddress dstAddress, int dstPort) {
     try {
-      //socket = DatagramChannel.open().socket();
       socket = new DatagramSocket();
     } catch (IOException e) {
       e.printStackTrace();
@@ -78,6 +77,7 @@ public class UDPForwarder extends AbsForwarder implements ICommunication {
       socket.setSoTimeout(10000);
       socket.receive(response);
     } catch (SocketTimeoutException e) {
+      close();
       return null;
     } catch (IOException e) {
       e.printStackTrace();
@@ -87,8 +87,7 @@ public class UDPForwarder extends AbsForwarder implements ICommunication {
 
   @Override
   public void close() {
-    socket.close();
+    if(socket != null && !socket.isClosed()) socket.close();
     closed = true;
-    vpnService.getForwarderPools().release(this);
   }
 }

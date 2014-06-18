@@ -25,7 +25,7 @@ public class MySocketForwarder extends Thread {
       clientServer.start();
       serverClient.start();
 
-      Log.d(TAG, "Start forwarding");
+      if(DEBUG) Log.d(TAG, "Start forwarding");
       while (clientServer.isAlive())
         clientServer.join();
       while (serverClient.isAlive())
@@ -52,7 +52,6 @@ public class MySocketForwarder extends Thread {
     try {
       byte[] buff = new byte[4096];
       int got;
-      //Log.d(TAG, "Running");
       while ((got = in.read(buff)) > -1){
         if(DEBUG) Log.d(TAG + getName(), ByteOperations.byteArrayToString(buff, 0, got));
         out.write(buff, 0, got);
@@ -62,15 +61,10 @@ public class MySocketForwarder extends Thread {
     } finally {
       try {
         in.close();
-      } catch (IOException ignore) {
-        ignore.printStackTrace();
-      }
-      try {
         out.close();
       } catch (IOException ignore) {
         ignore.printStackTrace();
       }
     }
   }
-
 }

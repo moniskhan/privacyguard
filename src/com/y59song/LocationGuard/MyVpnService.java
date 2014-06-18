@@ -3,7 +3,6 @@ package com.y59song.LocationGuard;
 import android.content.Intent;
 import android.net.VpnService;
 import android.os.ParcelFileDescriptor;
-import android.util.Log;
 import com.y59song.Forwader.ForwarderPools;
 import com.y59song.Network.LocalServer;
 import com.y59song.Utilities.MyClientResolver;
@@ -65,10 +64,10 @@ public class MyVpnService extends VpnService implements Runnable{
   private void setup_network() {
     Builder b = new Builder();
     b.addAddress("10.8.0.1", 32);
+    b.addDnsServer("8.8.8.8");
+    b.addRoute("8.8.8.8", 32);
     b.addRoute("173.194.43.116", 32);
-    //b.addRoute("192.30.252.130", 32);
     b.addRoute("72.21.215.233", 32);
-    //b.addRoute("0.0.0.0", 0);
     b.setMtu(1500);
     mInterface = b.establish();
   }
@@ -135,7 +134,6 @@ public class MyVpnService extends VpnService implements Runnable{
   }
 
   public ForwarderPools getForwarderPools() {
-    Log.d(TAG, "GET Pools");
     return forwarderPools;
   }
 }
