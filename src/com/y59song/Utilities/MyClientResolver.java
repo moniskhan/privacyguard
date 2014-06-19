@@ -23,7 +23,7 @@ import java.util.regex.Pattern;
 public class MyClientResolver implements IClientResolver {
 
 
-  private static boolean DEBUG = false;
+  private static boolean DEBUG = true;
   private static String TAG = MyClientResolver.class.getSimpleName();
 
   private PackageManager packageManager;
@@ -94,6 +94,7 @@ public class MyClientResolver implements IClientResolver {
       builder = new StringBuilder();
 
       while ((line = reader.readLine()) != null) {
+        if(DEBUG) Log.d(TAG, line);
         if (line.toUpperCase().contains(hexPort.toUpperCase())){
           builder.append(line);
         }

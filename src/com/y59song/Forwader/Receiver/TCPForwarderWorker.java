@@ -71,8 +71,7 @@ public class TCPForwarderWorker extends Thread {
         try {
           socketChannel.write(ByteBuffer.wrap(temp));
         } catch (Exception e) {
-          Log.d(TAG, socketChannel.socket().getLocalPort() + " " + socketChannel.socket().getPort());
-          e.printStackTrace();
+          break;
         }
       }
       if(DEBUG) Log.d(TAG, "Sender stop");
@@ -91,6 +90,7 @@ public class TCPForwarderWorker extends Thread {
         e.printStackTrace();
       }
       Iterator<SelectionKey> iterator = selector.selectedKeys().iterator();
+      if(DEBUG) Log.d(TAG, "selected");
       while(iterator.hasNext() && !forwarder.isClosed()) {
         SelectionKey key = iterator.next();
         iterator.remove();
@@ -98,7 +98,11 @@ public class TCPForwarderWorker extends Thread {
           try {
             msg.clear();
             int length = socketChannel.read(msg);
-            if(length <= 0) continue;
+            if(DEBUG) Log.d(TAG, "selected read : " + length + " " + forwarder.debugInfo());
+            if(length < 0) {
+              sender.interrupt();
+              return;
+            }
             msg.flip();
             byte[] temp = new byte[length];
             msg.get(temp);
@@ -110,11 +114,16 @@ public class TCPForwarderWorker extends Thread {
         }
       }
     }
+    try {
+      selector.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
     if(DEBUG) Log.d(TAG, "Receiver stop");
     sender.interrupt();
   }
 
   public void close() {
-    sender.interrupt();
+    if(sender != null && sender.isAlive()) sender.interrupt();
   }
 }

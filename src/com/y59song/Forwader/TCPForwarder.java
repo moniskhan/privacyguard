@@ -117,9 +117,9 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
     } else if(flag == TCPHeader.FINACK) {
       forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.ACK), null));
       forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.FINACK), null));
-      close();
+      close(false);
     } else if(flag == TCPHeader.RST) {
-      close();
+      close(false);
     }
 
     if(changed) {
@@ -143,7 +143,7 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
     switch(status) {
       case LISTEN:
         if(flag != TCPHeader.SYN) {
-          close();
+          close(true);
           return;
         }
         conn_info.reset(ipDatagram);
@@ -155,7 +155,7 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
         break;
       case SYN_ACK_SENT:
         if(flag != TCPHeader.ACK) {
-          close();
+          close(true);
           return;
         }
         status = Status.DATA;
@@ -174,15 +174,15 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
           conn_info.increaseSeq(
             forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.FINACK), null))
           );
-          close();
+          close(false);
         } else if((flag & TCPHeader.RST) != 0) { // RST
-          close();
+          close(false);
         }
         break;
       case HALF_CLOSE_BY_CLIENT:
         assert(flag == TCPHeader.ACK);
         status = Status.CLOSED;
-        close();
+        close(false);
         break;
       case HALF_CLOSE_BY_SERVER:
         if(flag == TCPHeader.FINACK) {
@@ -190,7 +190,7 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
             forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.ACK), null))
           );
           status = Status.CLOSED;
-          close();
+          close(false);
         } // ELSE ACK for the finack sent by the server
         break;
       case CLOSED:
@@ -206,6 +206,11 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
     conn_info.increaseSeq(
       forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.DATA), response))
     );
+  }
+
+  @Override
+  public void close() {
+    close(false);
   }
 
   @Override
@@ -231,10 +236,10 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
     status = Status.LISTEN;
   }
 
-  @Override
-  public void close() {
+  public void close(boolean sendRST) {
     if(closed) return;
     closed = true;
+    if(sendRST) forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.RST), null));
     conn_info = null;
     status = Status.CLOSED;
     if(socketChannel != null) {
@@ -264,5 +269,9 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
     } catch (IOException e) {
       e.printStackTrace();
     }
+  }
+
+  public String debugInfo() {
+    return socket.getInetAddress().getHostAddress() + ":" + socketChannel.socket().getPort() + " " + socketChannel.isConnected();
   }
 }
