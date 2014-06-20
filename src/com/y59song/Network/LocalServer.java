@@ -89,5 +89,6 @@ public class LocalServer extends Thread {
         e.printStackTrace();
       }
     }
+    Log.d(TAG, "Stop Listening");
   }
 }

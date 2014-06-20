@@ -12,6 +12,7 @@ import java.net.Socket;
 public class MySocketForwarder extends Thread {
   private static String TAG = MySocketForwarder.class.getSimpleName();
   private static boolean DEBUG = false;
+  private static boolean PROTECT = true;
 
   private InputStream in;
   private OutputStream out;
@@ -55,7 +56,7 @@ public class MySocketForwarder extends Thread {
       byte[] buff = new byte[4096];
       int got;
       while ((got = in.read(buff)) > -1){
-        if(DEBUG) Log.d(TAG + getName(), ByteOperations.byteArrayToString(buff, 0, got));
+        if(PROTECT) Log.d(TAG + getName(), ByteOperations.byteArrayToString(buff, 0, got));
         out.write(buff, 0, got);
         out.flush();
       }
