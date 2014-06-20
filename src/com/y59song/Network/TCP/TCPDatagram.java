@@ -10,6 +10,7 @@ import java.util.Arrays;
  */
 public class TCPDatagram extends IPPayLoad {
   private static final String TAG = "TCPDatagram";
+  private static final boolean DEBUG = false;
 
   public static TCPDatagram create(byte[] data) {
     TCPHeader header = new TCPHeader(data);
@@ -19,13 +20,13 @@ public class TCPDatagram extends IPPayLoad {
   public TCPDatagram(TCPHeader header, byte[] data) {
     this.header = header;
     this.data = data;
-    debugInfo();
+    if(DEBUG) debugInfo();
   }
 
   public TCPDatagram(TCPHeader header, byte[] data, int start, int end) {
     this.header = header;
     this.data = Arrays.copyOfRange(data, start, end);
-    debugInfo();
+    if(DEBUG) debugInfo();
   }
 
   public void debugInfo() {

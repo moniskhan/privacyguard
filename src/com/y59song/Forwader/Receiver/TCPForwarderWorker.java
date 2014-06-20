@@ -20,7 +20,7 @@ public class TCPForwarderWorker extends Thread {
   private Selector selector;
   private TCPForwarder forwarder;
   private final int limit = 2048;
-  private final boolean DEBUG = true;
+  private final boolean DEBUG = false;
   private ByteBuffer msg = ByteBuffer.allocate(limit);
   private ArrayDeque<byte[]> requests = new ArrayDeque<byte[]>();
   private Sender sender;

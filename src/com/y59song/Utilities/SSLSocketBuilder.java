@@ -14,7 +14,7 @@ import java.util.List;
 
 public class SSLSocketBuilder {
   private static final String TAG = "SSLSocketBuilder";
-  private static boolean DEBUG = true;
+  private static boolean DEBUG = false;
   private static String[] wiresharkSupportedCiphers = new String[]
     {
       "TLS_RSA_WITH_NULL_MD5",

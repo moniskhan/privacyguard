@@ -24,6 +24,7 @@ import java.util.ArrayDeque;
  */
 public class TCPForwarder extends AbsForwarder implements Runnable, ICommunication {
   private final String TAG = "TCPForwarder";
+  private final boolean DEBUG = false;
   protected Socket socket;
   private SocketChannel socketChannel;
   private TCPForwarderWorker receiver;
@@ -139,7 +140,7 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
       rlen = ipDatagram.payLoad().dataLength();
       if(conn_info == null) conn_info = new TCPConnectionInfo(ipDatagram);
     } else return;
-    Log.d(TAG, "" + status + "," + closed);
+    if(DEBUG) Log.d(TAG, "" + status + "," + closed);
     switch(status) {
       case LISTEN:
         if(flag != TCPHeader.SYN) {
@@ -251,7 +252,7 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
     }
     if(receiver != null && receiver.isAlive()) receiver.close();
     vpnService.getForwarderPools().release(this);
-    Log.d(TAG, "Released");
+    if(DEBUG) Log.d(TAG, "Released");
   }
 
   @Override

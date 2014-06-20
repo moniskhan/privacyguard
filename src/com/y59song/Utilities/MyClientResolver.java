@@ -21,9 +21,7 @@ import java.util.regex.Pattern;
  */
 
 public class MyClientResolver implements IClientResolver {
-
-
-  private static boolean DEBUG = true;
+  private static boolean DEBUG = false;
   private static String TAG = MyClientResolver.class.getSimpleName();
 
   private PackageManager packageManager;
