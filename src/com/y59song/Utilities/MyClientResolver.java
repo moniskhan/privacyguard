@@ -21,7 +21,7 @@ import java.util.regex.Pattern;
  */
 
 public class MyClientResolver implements IClientResolver {
-  private static boolean DEBUG = false;
+  private static boolean DEBUG = true;
   private static String TAG = MyClientResolver.class.getSimpleName();
 
   private PackageManager packageManager;
@@ -71,7 +71,7 @@ public class MyClientResolver implements IClientResolver {
           srcAddressEntry = getIPAddrByHex(srcAddressEntry);
           dstAddressEntry = getIPAddrByHex(dstAddressEntry);
 
-          if (srcPort == port && !srcAddressEntry.contains("7F00:0001")) {
+          if (srcPort == port && !dstAddressEntry.contains("7F00:0001")) {
             String[] packagesForUid = packageManager.getPackagesForUid(uidEntry);
             if (packagesForUid != null) {
               String packageName = packagesForUid[0];
@@ -92,7 +92,6 @@ public class MyClientResolver implements IClientResolver {
       builder = new StringBuilder();
 
       while ((line = reader.readLine()) != null) {
-        if(DEBUG) Log.d(TAG, line);
         if (line.toUpperCase().contains(hexPort.toUpperCase())){
           builder.append(line);
         }
@@ -104,7 +103,6 @@ public class MyClientResolver implements IClientResolver {
       if(DEBUG) Log.d(TAG, content);
 
       if (content != null && content.length() > 0){
-        if(DEBUG) Log.d(TAG, NetworkInfo.TCP_4_PATTERN);
         Matcher m4 = Pattern.compile(NetworkInfo.TCP_4_PATTERN, Pattern.CASE_INSENSITIVE | Pattern.UNIX_LINES | Pattern.DOTALL).matcher(content);
 
         while (m4.find()) {
@@ -122,7 +120,7 @@ public class MyClientResolver implements IClientResolver {
           srcAddressEntry = getIPAddrByHex(srcAddressEntry);
           dstAddressEntry = getIPAddrByHex(dstAddressEntry);
 
-          if (srcPort == port && srcAddressEntry != "127.0.0.1") {
+          if (srcPort == port && dstAddressEntry != "127.0.0.1") {
             String[] packagesForUid = packageManager.getPackagesForUid(uidEntry);
 
             if (packagesForUid != null) {

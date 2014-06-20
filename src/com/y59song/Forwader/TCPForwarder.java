@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
@@ -260,7 +261,9 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
     try {
       if(socketChannel == null) socketChannel = SocketChannel.open();
       socket = socketChannel.socket();
-      socket.bind(new InetSocketAddress(InetAddress.getLocalHost(), src_port));
+      socket.setReuseAddress(true);
+      //socket.bind(new InetSocketAddress(InetAddress.getLocalHost(), src_port));
+      socket.bind(new InetSocketAddress(src_port));
       socketChannel.connect(new InetSocketAddress(LocalServer.port));
       socketChannel.configureBlocking(false);
       Selector selector = Selector.open();
@@ -268,6 +271,11 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
       receiver = new TCPForwarderWorker(socketChannel, this, selector);
       receiver.start();
     } catch (IOException e) {
+      try {
+        Log.d(TAG, InetAddress.getLocalHost().getHostAddress() + ":" + src_port);
+      } catch (UnknownHostException e1) {
+        e1.printStackTrace();
+      }
       e.printStackTrace();
     }
   }
