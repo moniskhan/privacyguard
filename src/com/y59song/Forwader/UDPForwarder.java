@@ -34,7 +34,7 @@ public class UDPForwarder extends AbsForwarder implements ICommunication {
   protected void forward(IPDatagram ipDatagram) {
     if(closed) return;
     UDPDatagram udpDatagram = (UDPDatagram)ipDatagram.payLoad();
-    setup(ipDatagram.header().getDstAddress(), ipDatagram.payLoad().getDstPort());
+    setup(null, -1, ipDatagram.header().getDstAddress(), ipDatagram.payLoad().getDstPort());
     send(udpDatagram);
 
     IPHeader newIPHeader = ipDatagram.header().reverse();
@@ -51,7 +51,7 @@ public class UDPForwarder extends AbsForwarder implements ICommunication {
   }
 
   @Override
-  public void setup(InetAddress dstAddress, int dstPort) {
+  public void setup(InetAddress srcAddress, int srcPort, InetAddress dstAddress, int dstPort) {
     try {
       socket = new DatagramSocket();
     } catch (IOException e) {

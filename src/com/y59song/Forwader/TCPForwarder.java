@@ -245,6 +245,7 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
     status = Status.CLOSED;
     if(socketChannel != null) {
       try {
+        socketChannel.socket().close();
         socketChannel.close();
         socketChannel = null;
       } catch (IOException e) {
@@ -257,13 +258,13 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
   }
 
   @Override
-  public void setup(InetAddress srcAddress, int src_port) {
+  public void setup(InetAddress srcAddress, int src_port, InetAddress dstAddress, int dst_port) {
     try {
       if(socketChannel == null) socketChannel = SocketChannel.open();
       socket = socketChannel.socket();
       socket.setReuseAddress(true);
-      //socket.bind(new InetSocketAddress(InetAddress.getLocalHost(), src_port));
-      socket.bind(new InetSocketAddress(src_port));
+      socket.bind(new InetSocketAddress(InetAddress.getLocalHost(), src_port));
+      vpnService.getClientResolver().addPort(src_port, dstAddress.getHostAddress(), dst_port);
       socketChannel.connect(new InetSocketAddress(LocalServer.port));
       socketChannel.configureBlocking(false);
       Selector selector = Selector.open();

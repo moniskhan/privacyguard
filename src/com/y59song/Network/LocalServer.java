@@ -21,7 +21,7 @@ import java.nio.channels.SocketChannel;
 public class LocalServer extends Thread {
   private static final boolean DEBUG = false;
   private static final String TAG = LocalServer.class.getSimpleName();
-  public static final int port = 12345;
+  public static int port = 12345;
   public static final int SSLPort = 443;
 
   private ServerSocketChannel serverSocketChannel;
@@ -40,7 +40,9 @@ public class LocalServer extends Thread {
   private void listen() throws IOException {
     serverSocketChannel = ServerSocketChannel.open();
     serverSocketChannel.socket().setReuseAddress(true);
-    serverSocketChannel.socket().bind(new InetSocketAddress(port));
+    //serverSocketChannel.socket().bind(new InetSocketAddress(port));
+    serverSocketChannel.socket().bind(null);
+    port = serverSocketChannel.socket().getLocalPort();
   }
 
   private class ForwarderHandler implements Runnable {
@@ -51,7 +53,7 @@ public class LocalServer extends Thread {
     @Override
     public void run() {
       try {
-        ConnectionDescriptor descriptor = vpnService.getClientResolver().getClientDescriptorBySocket(client);
+        ConnectionDescriptor descriptor = vpnService.getClientResolver().getClientDescriptorByPort(client.getPort());
         SocketChannel targetChannel = SocketChannel.open();
         Socket target = targetChannel.socket();
         vpnService.protect(target);

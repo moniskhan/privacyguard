@@ -13,6 +13,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.net.Socket;
+import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -23,6 +24,8 @@ import java.util.regex.Pattern;
 public class MyClientResolver implements IClientResolver {
   private static boolean DEBUG = true;
   private static String TAG = MyClientResolver.class.getSimpleName();
+  private HashMap<Integer, String> portToRemoteAddress = new HashMap<Integer, String>();
+  private HashMap<Integer, Integer> portToRemotePort = new HashMap<Integer, Integer>();
 
   private PackageManager packageManager;
 
@@ -173,6 +176,36 @@ public class MyClientResolver implements IClientResolver {
       }
     }
     return ret.substring(1);
+  }
+
+  public ConnectionDescriptor getClientDescriptorByPort(int port) {
+    String remoteAddress;
+    int remotePort;
+    synchronized (portToRemoteAddress) {
+      remoteAddress = portToRemoteAddress.get(port);
+    }
+    synchronized (portToRemotePort) {
+      remotePort = portToRemotePort.get(port);
+    }
+    return new ConnectionDescriptor(null, null, null, NetworkInfo.TCP6_TYPE, 0, "10.8.0.1", port, remoteAddress, remotePort, null, -1);
+  }
+
+  public void addPort(int port, String remoteAddress, int remotePort) {
+    synchronized (portToRemoteAddress) {
+      portToRemoteAddress.put(port, remoteAddress);
+    }
+    synchronized (portToRemotePort) {
+      portToRemotePort.put(port, remotePort);
+    }
+  }
+
+  public void deletePort(int port) {
+    synchronized (portToRemoteAddress) {
+      portToRemoteAddress.remove(port);
+    }
+    synchronized (portToRemotePort) {
+      portToRemotePort.remove(port);
+    }
   }
 }
 

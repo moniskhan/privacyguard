@@ -30,6 +30,8 @@ public class MySocketForwarder extends Thread {
         clientServer.join();
       while (serverClient.isAlive())
         serverClient.join();
+      clientSocket.close();
+      serverSocket.close();
     }else{
       if (DEBUG) Log.d(TAG, "skipping socket forwarding because of invalid sockets");
       if (clientSocket != null && clientSocket.isConnected()){
