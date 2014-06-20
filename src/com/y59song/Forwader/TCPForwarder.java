@@ -237,9 +237,8 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
   }
 
   public void close(boolean sendRST) {
-    if(closed) return;
     closed = true;
-    if(sendRST) forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.RST), null));
+    if(sendRST && conn_info != null) forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.RST), null));
     conn_info = null;
     status = Status.CLOSED;
     if(socketChannel != null) {
@@ -251,6 +250,7 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
       }
     }
     if(receiver != null && receiver.isAlive()) receiver.close();
+    vpnService.getForwarderPools().release(this);
     Log.d(TAG, "Released");
   }
 

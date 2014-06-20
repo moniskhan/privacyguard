@@ -4,6 +4,7 @@ import com.y59song.LocationGuard.MyVpnService;
 import com.y59song.Network.IP.IPDatagram;
 import com.y59song.Utilities.RealPool.BoundedBlockingPool;
 
+import java.util.Collections;
 import java.util.HashMap;
 
 /**
@@ -66,12 +67,12 @@ public class ForwarderPools {
   public void release(UDPForwarder udpForwarder) {
     //Log.d(TAG, "Release : " + udpForwarderPool.getSize() + ", " + tcpForwarderPool.getSize());
     //udpForwarderPool.release(udpForwarder);
-    //portToForwarder.values().removeAll(Collections.singleton(udpForwarder));
+    portToForwarder.values().removeAll(Collections.singleton(udpForwarder));
   }
 
   public void release(TCPForwarder tcpForwarder) {
     //Log.d(TAG, "Release : " + udpForwarderPool.getSize() + ", " + tcpForwarderPool.getSize());
     //tcpForwarderPool.release(tcpForwarder);
-    //portToForwarder.values().removeAll(Collections.singleton(tcpForwarder));
+    portToForwarder.values().removeAll(Collections.singleton(tcpForwarder));
   }
 }

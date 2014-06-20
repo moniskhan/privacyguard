@@ -147,27 +147,6 @@ public class MyNetworkHostNameResolver {
     newSiteData.hostName = DNSProxy.getHostNameFromIp(newSiteData.tcpAddress);
     newSiteData.sourcePort = socket.getPort();
     newSiteData.name = "";
-    /*
-    SiteData newSiteData = new SiteData();
-    String originalDest = descriptor.getRemoteAddress() + ":" + descriptor.getRemotePort();
-    String[] tokens = originalDest.split(":");
-    int _destPort = descriptor.getRemotePort();
-    if (tokens.length == 2){
-      String destIP = tokens[0];
-      String hostName = DNSProxy.getHostNameFromIp(destIP);
-      int destPort = Integer.parseInt(tokens[1]);
-      if (destPort != _destPort && _destPort > 0){
-        destPort = _destPort;
-      }
-      newSiteData.destPort = destPort;
-      newSiteData.tcpAddress = destIP;
-      newSiteData.sourcePort = socket.getPort();
-      newSiteData.hostName = hostName;
-      newSiteData.name = "";
-    }else{
-
-    }
-    */
     return newSiteData;
   }
 

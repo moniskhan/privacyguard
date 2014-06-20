@@ -89,5 +89,6 @@ public class UDPForwarder extends AbsForwarder implements ICommunication {
   public void close() {
     if(socket != null && !socket.isClosed()) socket.close();
     closed = true;
+    vpnService.getForwarderPools().release(this);
   }
 }
