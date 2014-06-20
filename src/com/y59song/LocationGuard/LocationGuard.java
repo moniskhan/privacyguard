@@ -7,8 +7,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.VpnService;
 import android.os.Bundle;
+import android.security.KeyChain;
 import android.view.View;
 
+import javax.security.cert.X509Certificate;
+import java.io.File;
+import java.io.FileInputStream;
 import java.util.List;
 
 public class LocationGuard extends Activity implements View.OnClickListener {
@@ -20,6 +24,25 @@ public class LocationGuard extends Activity implements View.OnClickListener {
     setContentView(R.layout.main);
     intent = new Intent(this, MyVpnService.class);
     findViewById(R.id.connect).setOnClickListener(this);
+    installCertificate();
+  }
+
+  public void installCertificate() {
+    Intent intent = KeyChain.createInstallIntent();
+    try {
+      String CERT_FILE = this.getExternalCacheDir().getAbsolutePath() + MyVpnService.CAName + "_export.crt";
+      File certFile = new File(CERT_FILE);
+      FileInputStream certIs = new FileInputStream(CERT_FILE);
+      byte [] cert = new byte[(int)certFile.length()];
+      certIs.read(cert);
+      X509Certificate x509 = X509Certificate.getInstance(cert);
+      intent.putExtra(KeyChain.EXTRA_CERTIFICATE, x509.getEncoded());
+      intent.putExtra(KeyChain.EXTRA_NAME, "Test");
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+    startActivity(intent);
+
   }
 
   @Override
