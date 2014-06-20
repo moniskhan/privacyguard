@@ -14,6 +14,7 @@ import java.util.List;
 
 public class SSLSocketBuilder {
   private static final String TAG = "SSLSocketBuilder";
+  private static boolean DEBUG = true;
   private static String[] wiresharkSupportedCiphers = new String[]
     {
       "TLS_RSA_WITH_NULL_MD5",
@@ -65,6 +66,8 @@ public class SSLSocketBuilder {
     Socket sock, SiteData hostData,boolean useOnlyWiresharkDissCiphers,
     SSLSocketFactoryFactory sslSocketFactoryFactory)
     throws Exception {
+    String certEntry = hostData.tcpAddress != null ? hostData.tcpAddress + "_" + hostData.destPort: hostData.name;
+    if(DEBUG) Log.d(TAG, certEntry);
     SSLSocketFactory factory = sslSocketFactoryFactory.getSocketFactory(hostData);
     if (factory == null)
       throw new RuntimeException(
@@ -73,7 +76,7 @@ public class SSLSocketBuilder {
     try {
       int sockPort = sock.getPort();
       String hostName = hostData.tcpAddress != null ? hostData.tcpAddress : hostData.name;
-      sslsock = (SSLSocket) factory.createSocket(sock, hostName, sockPort, false);
+      sslsock = (SSLSocket) factory.createSocket(sock, hostName, sockPort, true);
       if (useOnlyWiresharkDissCiphers){
         String[] ciphers = selectCiphers(sslsock.getSupportedCipherSuites());
         sslsock.setEnabledCipherSuites(ciphers);
