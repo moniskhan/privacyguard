@@ -31,11 +31,7 @@ public class MyVpnService extends VpnService implements Runnable{
   private ForwarderPools forwarderPools;
 
   //SSL stuff
-  private String Dir;
-  public static final String CAName = "/LocationGuard_CA";
-  public static final String CertName = "/LocationGuard_Cert";
-  public static final String KeyType = "PKCS12";
-  public static final String Password = "";
+
   private SSLSocketFactoryFactory sslSocketFactoryFactory;
 
   //Network
@@ -55,7 +51,7 @@ public class MyVpnService extends VpnService implements Runnable{
     return 0;
   }
 
-  @Override
+ @Override
   public void run() {
     setup_network();
     setup_workers();
@@ -85,9 +81,12 @@ public class MyVpnService extends VpnService implements Runnable{
   private void setup_workers() {
     resolver = new MyNetworkHostNameResolver(this);
     clientResolver = new MyClientResolver(this);
-    Dir = this.getExternalCacheDir().getAbsolutePath();
+    String Dir = this.getExternalCacheDir().getAbsolutePath();
     try {
-      sslSocketFactoryFactory = new SSLSocketFactoryFactory(Dir + CAName, Dir + CertName, KeyType, Password.toCharArray());
+      sslSocketFactoryFactory = new SSLSocketFactoryFactory(Dir + LocationGuard.CAName,
+        Dir + LocationGuard.CertName,
+        LocationGuard.KeyType,
+        LocationGuard.Password.toCharArray());
     } catch (GeneralSecurityException e) {
       e.printStackTrace();
     } catch (IOException e) {

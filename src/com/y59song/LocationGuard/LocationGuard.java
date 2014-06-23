@@ -9,6 +9,7 @@ import android.net.VpnService;
 import android.os.Bundle;
 import android.security.KeyChain;
 import android.view.View;
+import org.sandrop.webscarab.plugin.proxy.SSLSocketFactoryFactory;
 
 import javax.security.cert.X509Certificate;
 import java.io.File;
@@ -17,6 +18,10 @@ import java.util.List;
 
 public class LocationGuard extends Activity implements View.OnClickListener {
   private Intent intent;
+  public static final String CAName = "/LocationGuard_CA";
+  public static final String CertName = "/LocationGuard_Cert";
+  public static final String KeyType = "PKCS12";
+  public static final String Password = "";
   public static final boolean debug = true;
   @Override
   public void onCreate(Bundle savedInstanceState) {
@@ -30,7 +35,9 @@ public class LocationGuard extends Activity implements View.OnClickListener {
   public void installCertificate() {
     Intent intent = KeyChain.createInstallIntent();
     try {
-      String CERT_FILE = this.getExternalCacheDir().getAbsolutePath() + MyVpnService.CAName + "_export.crt";
+      String Dir = this.getExternalCacheDir().getAbsolutePath();
+      new SSLSocketFactoryFactory(Dir + CAName, Dir + CertName, KeyType, Password.toCharArray());
+      String CERT_FILE = Dir + CAName + "_export.crt";
       File certFile = new File(CERT_FILE);
       FileInputStream certIs = new FileInputStream(CERT_FILE);
       byte [] cert = new byte[(int)certFile.length()];
@@ -42,14 +49,12 @@ public class LocationGuard extends Activity implements View.OnClickListener {
       e.printStackTrace();
     }
     startActivity(intent);
-
   }
 
   @Override
   public void onClick(View v) {
     if(!isServiceRunning(this, MyVpnService.class.getName()))
       startVPN();
-
   }
 
   @Override

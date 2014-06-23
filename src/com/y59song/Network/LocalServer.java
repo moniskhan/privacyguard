@@ -19,7 +19,7 @@ import java.nio.channels.SocketChannel;
  * Created by frank on 2014-06-03.
  */
 public class LocalServer extends Thread {
-  private static final boolean DEBUG = false;
+  private static final boolean DEBUG = true;
   private static final String TAG = LocalServer.class.getSimpleName();
   public static int port = 12345;
   public static final int SSLPort = 443;
@@ -46,6 +46,7 @@ public class LocalServer extends Thread {
   }
 
   private class ForwarderHandler implements Runnable {
+    private final String TAG = ForwarderHandler.class.getSimpleName();
     private Socket client;
     public ForwarderHandler(Socket client) {
       this.client = client;

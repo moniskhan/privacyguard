@@ -13,7 +13,7 @@ import java.net.Socket;
 public class MySocketForwarder extends Thread {
   private static String TAG = MySocketForwarder.class.getSimpleName();
   private static boolean DEBUG = false;
-  private static boolean PROTECT = true;
+  private static boolean PROTECT = false;
   private boolean outgoing = false;
   private IPlugin plugin;
 
