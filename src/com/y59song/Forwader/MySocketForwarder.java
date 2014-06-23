@@ -13,16 +13,17 @@ public class MySocketForwarder extends Thread {
   private static String TAG = MySocketForwarder.class.getSimpleName();
   private static boolean DEBUG = false;
   private static boolean PROTECT = true;
+  private boolean outgoing = false;
 
   private InputStream in;
   private OutputStream out;
 
-  public static void connect(String name, Socket clientSocket, Socket serverSocket) throws Exception {
+  public static void connect(Socket clientSocket, Socket serverSocket) throws Exception {
     if (clientSocket != null && serverSocket != null && clientSocket.isConnected() && serverSocket.isConnected()){
       clientSocket.setSoTimeout(0);
       serverSocket.setSoTimeout(0);
-      MySocketForwarder clientServer = new MySocketForwarder(name + "_clientServer", clientSocket.getInputStream(), serverSocket.getOutputStream());
-      MySocketForwarder serverClient = new MySocketForwarder(name + "_serverClient", serverSocket.getInputStream(), clientSocket.getOutputStream());
+      MySocketForwarder clientServer = new MySocketForwarder(clientSocket.getInputStream(), serverSocket.getOutputStream(), true);
+      MySocketForwarder serverClient = new MySocketForwarder(serverSocket.getInputStream(), clientSocket.getOutputStream(), false);
       clientServer.start();
       serverClient.start();
 
@@ -44,10 +45,10 @@ public class MySocketForwarder extends Thread {
     }
   }
 
-  public MySocketForwarder(String name, InputStream in, OutputStream out) {
+  public MySocketForwarder(InputStream in, OutputStream out, boolean isOutgoing) {
     this.in = in;
     this.out = out;
-    setName(name);
+    this.outgoing = isOutgoing;
     setDaemon(true);
   }
 

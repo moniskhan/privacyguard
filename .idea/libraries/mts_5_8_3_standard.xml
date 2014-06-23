@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="mts-5.8.3-standard">
-    <CLASSES>
-      <root url="jar://$PROJECT_DIR$/libs/mts-5.8.3-standard.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>
