@@ -5,6 +5,8 @@ import android.net.VpnService;
 import android.os.ParcelFileDescriptor;
 import com.y59song.Forwader.ForwarderPools;
 import com.y59song.Network.LocalServer;
+import com.y59song.Plugin.IPlugin;
+import com.y59song.Plugin.LocationDetection;
 import com.y59song.Utilities.MyClientResolver;
 import com.y59song.Utilities.MyNetworkHostNameResolver;
 import org.sandrop.webscarab.plugin.proxy.SSLSocketFactoryFactory;
@@ -40,6 +42,9 @@ public class MyVpnService extends VpnService implements Runnable{
   private MyNetworkHostNameResolver resolver;
   private MyClientResolver clientResolver;
   private LocalServer localServer;
+
+  // Plugin
+  private Class pluginClass = LocationDetection.class;
 
   @Override
   public int onStartCommand(Intent intent, int flags, int startId) {
@@ -140,5 +145,16 @@ public class MyVpnService extends VpnService implements Runnable{
 
   public ForwarderPools getForwarderPools() {
     return forwarderPools;
+  }
+
+  public IPlugin getNewPlugin() {
+    try {
+      return (IPlugin)pluginClass.newInstance();
+    } catch (InstantiationException e) {
+      e.printStackTrace();
+    } catch (IllegalAccessException e) {
+      e.printStackTrace();
+    }
+    return null;
   }
 }

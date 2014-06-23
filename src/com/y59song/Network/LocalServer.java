@@ -68,7 +68,7 @@ public class LocalServer extends Thread {
         } else {
           targetChannel.connect(new InetSocketAddress(descriptor.getRemoteAddress(), descriptor.getRemotePort()));
         }
-        MySocketForwarder.connect("", client, target);
+        MySocketForwarder.connect(client, target, vpnService.getNewPlugin());
       } catch (Exception e) {
         e.printStackTrace();
       }
