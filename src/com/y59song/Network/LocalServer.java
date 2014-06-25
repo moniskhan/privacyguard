@@ -7,6 +7,7 @@ import com.y59song.Utilities.SSLSocketBuilder;
 import org.sandrop.webscarab.model.ConnectionDescriptor;
 import org.sandrop.webscarab.plugin.proxy.SiteData;
 
+import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 import java.io.IOException;
@@ -14,6 +15,8 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Created by frank on 2014-06-03.
@@ -26,6 +29,7 @@ public class LocalServer extends Thread {
 
   private ServerSocketChannel serverSocketChannel;
   private MyVpnService vpnService;
+  private Set<String> sslPinning = new HashSet<String>();
   public LocalServer(MyVpnService vpnService) {
     if(serverSocketChannel == null || !serverSocketChannel.isOpen())
       try {
@@ -58,16 +62,21 @@ public class LocalServer extends Thread {
         SocketChannel targetChannel = SocketChannel.open();
         Socket target = targetChannel.socket();
         vpnService.protect(target);
-        if(descriptor != null && descriptor.getRemotePort() == SSLPort) {
+        targetChannel.connect(new InetSocketAddress(descriptor.getRemoteAddress(), descriptor.getRemotePort()));
+        if(descriptor != null && descriptor.getRemotePort() == SSLPort && sslPinning.contains(descriptor.getRemoteAddress())) {
           SiteData remoteData = vpnService.getResolver().getSecureHost(client, descriptor, true);
           if(DEBUG) Log.d(TAG, "Begin Handshake : " + remoteData.tcpAddress + " " + remoteData.hostName);
-          client = SSLSocketBuilder.negotiateSSL(client, remoteData, false, vpnService.getSSlSocketFactoryFactory());
-          ((SSLSocket)client).getSession();
-          if(DEBUG) Log.d(TAG, "After Handshake");
-          targetChannel.connect(new InetSocketAddress(descriptor.getRemoteAddress(), descriptor.getRemotePort()));
-          target = ((SSLSocketFactory)SSLSocketFactory.getDefault()).createSocket(target, descriptor.getRemoteAddress(), descriptor.getRemotePort(), true);
-        } else {
-          targetChannel.connect(new InetSocketAddress(descriptor.getRemoteAddress(), descriptor.getRemotePort()));
+          SSLSocket ssl_client = SSLSocketBuilder.negotiateSSL(client, remoteData, false, vpnService.getSSlSocketFactoryFactory());
+          SSLSession session = ssl_client.getSession();
+          if(DEBUG) Log.d(TAG, "After Handshake : " + session.isValid());
+          if(session.isValid()) {
+            client = ssl_client;
+            target = ((SSLSocketFactory) SSLSocketFactory.getDefault()).createSocket(target, descriptor.getRemoteAddress(), descriptor.getRemotePort(), true);
+          } else {
+            sslPinning.add(descriptor.getRemoteAddress());
+            ssl_client.close();
+            assert(!client.isClosed());
+          }
         }
         MySocketForwarder.connect(client, target, vpnService.getNewPlugin());
       } catch (Exception e) {
