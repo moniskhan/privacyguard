@@ -60,7 +60,7 @@ public class MySocketForwarder extends Thread {
       byte[] buff = new byte[4096];
       int got;
       while ((got = in.read(buff)) > -1){
-        if(PROTECT) Log.d(TAG + getName(), ByteOperations.byteArrayToString(buff, 0, got));
+        if(outgoing) Log.d(TAG + getName(), ByteOperations.byteArrayToString(buff, 0, got));
         if(outgoing) plugin.handleRequest(buff);
         else plugin.handleResponse(buff);
         out.write(buff, 0, got);
