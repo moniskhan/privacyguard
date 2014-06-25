@@ -5,6 +5,6 @@ package com.y59song.Plugin;
  */
 public interface IPlugin {
   // May modify the content of the request and response
-  public boolean handleRequest(byte[] request);
-  public boolean handleResponse(byte[] response);
+  public byte[] handleRequest(byte[] request);
+  public byte[] handleResponse(byte[] response);
 }
