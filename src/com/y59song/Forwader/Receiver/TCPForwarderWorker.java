@@ -99,7 +99,7 @@ public class TCPForwarderWorker extends Thread {
             msg.clear();
             int length = socketChannel.read(msg);
             if(DEBUG) Log.d(TAG, "selected read : " + length + " " + forwarder.debugInfo());
-            if(length < 0) {
+            if(length <= 0) {
               sender.interrupt();
               return;
             }

@@ -3,12 +3,14 @@ package com.y59song.Forwader;
 import android.util.Log;
 import com.y59song.LocationGuard.MyVpnService;
 import com.y59song.Plugin.IPlugin;
+import com.y59song.Utilities.ByteOperations;
 import org.sandrop.webscarab.model.ConnectionDescriptor;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.util.Arrays;
 
 
 public class MySocketForwarder extends Thread {
@@ -40,6 +42,7 @@ public class MySocketForwarder extends Thread {
         serverClient.join();
       clientSocket.close();
       serverSocket.close();
+      if(DEBUG) Log.d(TAG, "Stop forwarding");
     }else{
       if (DEBUG) Log.d(TAG, "skipping socket forwarding because of invalid sockets");
       if (clientSocket != null && clientSocket.isConnected()){
@@ -70,9 +73,9 @@ public class MySocketForwarder extends Thread {
       byte[] buff = new byte[4096];
       int got;
       while ((got = in.read(buff)) > -1){
-        String msg = new String(buff).substring(0, got);
+        String msg = new String(Arrays.copyOfRange(buff, 0, got));
         boolean ret = outgoing ? plugin.handleRequest(msg) : plugin.handleResponse(msg);
-        if(DEBUG) Log.i(TAG, "" + (ret && outgoing));
+        if(DEBUG) Log.i(TAG, "" + (outgoing) + " " + got + " " + msg);
         if(ret && outgoing) {
           if(appName == null) {
             ConnectionDescriptor des = vpnService.getClientResolver().getClientDescriptorBySocket(inSocket);
@@ -84,7 +87,9 @@ public class MySocketForwarder extends Thread {
         out.write(buff, 0, got);
         out.flush();
       }
+      if(DEBUG) Log.i(TAG, "" + got);
     } catch (Exception ignore) {
+      ignore.printStackTrace();
     } finally {
       try {
         in.close();

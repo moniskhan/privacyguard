@@ -22,7 +22,7 @@ public class LocationGuard extends Activity implements View.OnClickListener {
   public static final String CertName = "/LocationGuard_Cert";
   public static final String KeyType = "PKCS12";
   public static final String Password = "";
-  public static final boolean debug = true;
+  public static final boolean debug = false;
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
