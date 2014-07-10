@@ -22,7 +22,7 @@ import java.util.regex.Pattern;
  */
 
 public class MyClientResolver implements IClientResolver {
-  private static boolean DEBUG = true;
+  private static boolean DEBUG = false;
   private static String TAG = MyClientResolver.class.getSimpleName();
   private HashMap<Integer, String> portToRemoteAddress = new HashMap<Integer, String>();
   private HashMap<Integer, Integer> portToRemotePort = new HashMap<Integer, Integer>();
@@ -70,17 +70,20 @@ public class MyClientResolver implements IClientResolver {
           int srcPort = Integer.valueOf(srcPortEntry, 16);
           int dstPort = Integer.valueOf(dstPortEntry, 16);
           int connStatus = Integer.valueOf(status, 16);
+          if(DEBUG) Log.d(TAG + " 6", "" + uidEntry);
+          if(DEBUG) Log.d(TAG + " 6", packageManager.getNameForUid(uidEntry));
 
           srcAddressEntry = getIPAddrByHex(srcAddressEntry);
           dstAddressEntry = getIPAddrByHex(dstAddressEntry);
 
           if (srcPort == port && !dstAddressEntry.contains("7F00:0001")) {
+            String appName = packageManager.getNameForUid(uidEntry);
             String[] packagesForUid = packageManager.getPackagesForUid(uidEntry);
             if (packagesForUid != null) {
               String packageName = packagesForUid[0];
               PackageInfo pInfo = packageManager.getPackageInfo(packageName, 0);
               String version = pInfo.versionName;
-              String name = pInfo.applicationInfo.name;
+              String name = (String)packageManager.getApplicationLabel(packageManager.getApplicationInfo(packageName, 0));
               return new ConnectionDescriptor(new String[]{packageName}, new String[]{name}, new String[]{version}, NetworkInfo.TCP6_TYPE, connStatus, srcAddressEntry, srcPort, dstAddressEntry, dstPort, null, uidEntry);
             }
           }
@@ -125,12 +128,13 @@ public class MyClientResolver implements IClientResolver {
 
           if (srcPort == port && dstAddressEntry != "127.0.0.1") {
             String[] packagesForUid = packageManager.getPackagesForUid(uidEntry);
-
+            String appName = packageManager.getNameForUid(uidEntry);
             if (packagesForUid != null) {
               String packageName = packagesForUid[0];
               PackageInfo pInfo = packageManager.getPackageInfo(packageName, 0);
               String version = pInfo.versionName;
-              String name = pInfo.applicationInfo.name;
+              String name = (String)packageManager.getApplicationLabel(packageManager.getApplicationInfo(packageName, 0));
+              //String name = pInfo.applicationInfo.name;
               return new ConnectionDescriptor(new String[]{packageName}, new String[]{name}, new String[]{version}, NetworkInfo.TCP_TYPE, status,
                 srcAddressEntry, srcPort, dstAddressEntry, dstPort, null, uidEntry);
             }

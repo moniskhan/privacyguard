@@ -36,8 +36,9 @@ public class TunReadThread extends Thread {
       ByteBuffer packet = ByteBuffer.allocate(limit);
       int length;
       dispatcher.start();
+      if(DEBUG) Log.d(TAG, "Receiving");
       while (!isInterrupted()) {
-        //if(DEBUG) Log.d(TAG, "Receiving");
+        if(DEBUG) Log.d(TAG, "Receiving");
         packet.clear();
         length = localIn.getChannel().read(packet);
         if(length > 0) {

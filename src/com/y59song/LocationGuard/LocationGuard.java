@@ -35,7 +35,7 @@ public class LocationGuard extends Activity implements View.OnClickListener {
   public void installCertificate() {
     Intent intent = KeyChain.createInstallIntent();
     try {
-      String Dir = this.getExternalCacheDir().getAbsolutePath();
+      String Dir = this.getExternalFilesDir(null).getAbsolutePath();
       new SSLSocketFactoryFactory(Dir + CAName, Dir + CertName, KeyType, Password.toCharArray());
       String CERT_FILE = Dir + CAName + "_export.crt";
       File certFile = new File(CERT_FILE);
@@ -53,8 +53,9 @@ public class LocationGuard extends Activity implements View.OnClickListener {
 
   @Override
   public void onClick(View v) {
-    if(!isServiceRunning(this, MyVpnService.class.getName()))
+    if(!isServiceRunning(this, MyVpnService.class.getName())) {
       startVPN();
+    }
   }
 
   @Override

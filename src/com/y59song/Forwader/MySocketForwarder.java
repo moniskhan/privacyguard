@@ -1,8 +1,9 @@
 package com.y59song.Forwader;
 
 import android.util.Log;
+import com.y59song.LocationGuard.MyVpnService;
 import com.y59song.Plugin.IPlugin;
-import com.y59song.Utilities.ByteOperations;
+import org.sandrop.webscarab.model.ConnectionDescriptor;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -16,16 +17,19 @@ public class MySocketForwarder extends Thread {
   private static boolean PROTECT = false;
   private boolean outgoing = false;
   private IPlugin plugin;
+  private MyVpnService vpnService;
+  private String appName = null;
 
+  private Socket inSocket;
   private InputStream in;
   private OutputStream out;
 
-  public static void connect(Socket clientSocket, Socket serverSocket, IPlugin plugin) throws Exception {
+  public static void connect(Socket clientSocket, Socket serverSocket, MyVpnService vpnService) throws Exception {
     if (clientSocket != null && serverSocket != null && clientSocket.isConnected() && serverSocket.isConnected()){
       clientSocket.setSoTimeout(0);
       serverSocket.setSoTimeout(0);
-      MySocketForwarder clientServer = new MySocketForwarder(clientSocket.getInputStream(), serverSocket.getOutputStream(), true, plugin);
-      MySocketForwarder serverClient = new MySocketForwarder(serverSocket.getInputStream(), clientSocket.getOutputStream(), false, plugin);
+      MySocketForwarder clientServer = new MySocketForwarder(clientSocket, serverSocket.getOutputStream(), true, vpnService);
+      MySocketForwarder serverClient = new MySocketForwarder(serverSocket, clientSocket.getOutputStream(), false, vpnService);
       clientServer.start();
       serverClient.start();
 
@@ -47,11 +51,17 @@ public class MySocketForwarder extends Thread {
     }
   }
 
-  public MySocketForwarder(InputStream in, OutputStream out, boolean isOutgoing, IPlugin plugin) {
-    this.in = in;
+  public MySocketForwarder(Socket inSocket, OutputStream out, boolean isOutgoing, MyVpnService vpnService) {
+    this.inSocket = inSocket;
+    try {
+      this.in = inSocket.getInputStream();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
     this.out = out;
     this.outgoing = isOutgoing;
-    this.plugin = plugin;
+    this.vpnService = vpnService;
+    this.plugin = vpnService.getNewPlugin();
     setDaemon(true);
   }
 
@@ -60,9 +70,17 @@ public class MySocketForwarder extends Thread {
       byte[] buff = new byte[4096];
       int got;
       while ((got = in.read(buff)) > -1){
-        if(outgoing) Log.d(TAG + getName(), got + " " + ByteOperations.byteArrayToString(buff, 0, got));
-        if(outgoing) buff = plugin.handleRequest(buff);
-        else buff = plugin.handleResponse(buff);
+        String msg = new String(buff).substring(0, got);
+        boolean ret = outgoing ? plugin.handleRequest(msg) : plugin.handleResponse(msg);
+        if(DEBUG) Log.i(TAG, "" + (ret && outgoing));
+        if(ret && outgoing) {
+          if(appName == null) {
+            ConnectionDescriptor des = vpnService.getClientResolver().getClientDescriptorBySocket(inSocket);
+            if(des != null) appName = des.getName();
+          }
+          Log.i("Leak Location", appName == null ? "Unknown" : appName);
+          vpnService.notify(appName == null ? "Unknown" : appName);
+        }
         out.write(buff, 0, got);
         out.flush();
       }
