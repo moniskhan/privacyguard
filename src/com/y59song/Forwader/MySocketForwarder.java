@@ -1,13 +1,35 @@
+/*
+ * Modify the SocketForwarder of SandroproxyLib
+ * Copyright (C) 2014  Yihang Song
+
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ */
+
 package com.y59song.Forwader;
 
 import android.util.Log;
+import com.y59song.LocationGuard.MyVpnService;
 import com.y59song.Plugin.IPlugin;
 import com.y59song.Utilities.ByteOperations;
+import org.sandrop.webscarab.model.ConnectionDescriptor;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.util.Arrays;
 
 
 public class MySocketForwarder extends Thread {
@@ -16,16 +38,19 @@ public class MySocketForwarder extends Thread {
   private static boolean PROTECT = false;
   private boolean outgoing = false;
   private IPlugin plugin;
+  private MyVpnService vpnService;
+  private String appName = null;
 
+  private Socket inSocket;
   private InputStream in;
   private OutputStream out;
 
-  public static void connect(Socket clientSocket, Socket serverSocket, IPlugin plugin) throws Exception {
+  public static void connect(Socket clientSocket, Socket serverSocket, MyVpnService vpnService) throws Exception {
     if (clientSocket != null && serverSocket != null && clientSocket.isConnected() && serverSocket.isConnected()){
       clientSocket.setSoTimeout(0);
       serverSocket.setSoTimeout(0);
-      MySocketForwarder clientServer = new MySocketForwarder(clientSocket.getInputStream(), serverSocket.getOutputStream(), true, plugin);
-      MySocketForwarder serverClient = new MySocketForwarder(serverSocket.getInputStream(), clientSocket.getOutputStream(), false, plugin);
+      MySocketForwarder clientServer = new MySocketForwarder(clientSocket, serverSocket.getOutputStream(), true, vpnService);
+      MySocketForwarder serverClient = new MySocketForwarder(serverSocket, clientSocket.getOutputStream(), false, vpnService);
       clientServer.start();
       serverClient.start();
 
@@ -36,6 +61,7 @@ public class MySocketForwarder extends Thread {
         serverClient.join();
       clientSocket.close();
       serverSocket.close();
+      if(DEBUG) Log.d(TAG, "Stop forwarding");
     }else{
       if (DEBUG) Log.d(TAG, "skipping socket forwarding because of invalid sockets");
       if (clientSocket != null && clientSocket.isConnected()){
@@ -47,11 +73,17 @@ public class MySocketForwarder extends Thread {
     }
   }
 
-  public MySocketForwarder(InputStream in, OutputStream out, boolean isOutgoing, IPlugin plugin) {
-    this.in = in;
+  public MySocketForwarder(Socket inSocket, OutputStream out, boolean isOutgoing, MyVpnService vpnService) {
+    this.inSocket = inSocket;
+    try {
+      this.in = inSocket.getInputStream();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
     this.out = out;
     this.outgoing = isOutgoing;
-    this.plugin = plugin;
+    this.vpnService = vpnService;
+    this.plugin = vpnService.getNewPlugin();
     setDaemon(true);
   }
 
@@ -60,13 +92,23 @@ public class MySocketForwarder extends Thread {
       byte[] buff = new byte[4096];
       int got;
       while ((got = in.read(buff)) > -1){
-        if(outgoing) Log.d(TAG + getName(), ByteOperations.byteArrayToString(buff, 0, got));
-        if(outgoing) plugin.handleRequest(buff);
-        else plugin.handleResponse(buff);
+        String msg = new String(Arrays.copyOfRange(buff, 0, got));
+        boolean ret = outgoing ? plugin.handleRequest(msg) : plugin.handleResponse(msg);
+        if(DEBUG) Log.i(TAG, "" + (outgoing) + " " + got + " " + msg);
+        if(ret && outgoing) {
+          if(appName == null) {
+            ConnectionDescriptor des = vpnService.getClientResolver().getClientDescriptorBySocket(inSocket);
+            if(des != null) appName = des.getName();
+          }
+          Log.i("Leak Location", appName == null ? "Unknown" : appName);
+          vpnService.notify(appName == null ? "Unknown" : appName);
+        }
         out.write(buff, 0, got);
         out.flush();
       }
+      if(DEBUG) Log.i(TAG, "" + got);
     } catch (Exception ignore) {
+      ignore.printStackTrace();
     } finally {
       try {
         in.close();

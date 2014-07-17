@@ -1,3 +1,21 @@
+/*
+ * Main activity
+ * Copyright (C) 2014  Yihang Song
+
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ */
 
 package com.y59song.LocationGuard;
 
@@ -22,7 +40,7 @@ public class LocationGuard extends Activity implements View.OnClickListener {
   public static final String CertName = "/LocationGuard_Cert";
   public static final String KeyType = "PKCS12";
   public static final String Password = "";
-  public static final boolean debug = true;
+  public static final boolean debug = false;
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
@@ -35,7 +53,7 @@ public class LocationGuard extends Activity implements View.OnClickListener {
   public void installCertificate() {
     Intent intent = KeyChain.createInstallIntent();
     try {
-      String Dir = this.getExternalCacheDir().getAbsolutePath();
+      String Dir = this.getExternalFilesDir(null).getAbsolutePath();
       new SSLSocketFactoryFactory(Dir + CAName, Dir + CertName, KeyType, Password.toCharArray());
       String CERT_FILE = Dir + CAName + "_export.crt";
       File certFile = new File(CERT_FILE);
@@ -53,8 +71,9 @@ public class LocationGuard extends Activity implements View.OnClickListener {
 
   @Override
   public void onClick(View v) {
-    if(!isServiceRunning(this, MyVpnService.class.getName()))
+    if(!isServiceRunning(this, MyVpnService.class.getName())) {
       startVPN();
+    }
   }
 
   @Override

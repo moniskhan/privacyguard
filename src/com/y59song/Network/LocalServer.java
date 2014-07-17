@@ -63,7 +63,7 @@ public class LocalServer extends Thread {
         Socket target = targetChannel.socket();
         vpnService.protect(target);
         targetChannel.connect(new InetSocketAddress(descriptor.getRemoteAddress(), descriptor.getRemotePort()));
-        if(descriptor != null && descriptor.getRemotePort() == SSLPort && sslPinning.contains(descriptor.getRemoteAddress())) {
+        if(descriptor != null && descriptor.getRemotePort() == SSLPort && !sslPinning.contains(descriptor.getRemoteAddress())) {
           SiteData remoteData = vpnService.getResolver().getSecureHost(client, descriptor, true);
           if(DEBUG) Log.d(TAG, "Begin Handshake : " + remoteData.tcpAddress + " " + remoteData.hostName);
           SSLSocket ssl_client = SSLSocketBuilder.negotiateSSL(client, remoteData, false, vpnService.getSSlSocketFactoryFactory());
@@ -78,7 +78,7 @@ public class LocalServer extends Thread {
             assert(!client.isClosed());
           }
         }
-        MySocketForwarder.connect(client, target, vpnService.getNewPlugin());
+        MySocketForwarder.connect(client, target, vpnService);
       } catch (Exception e) {
         e.printStackTrace();
       }

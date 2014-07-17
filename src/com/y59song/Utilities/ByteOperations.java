@@ -44,6 +44,7 @@ public class ByteOperations {
 
   public static String byteArrayToString(byte[] array) {
     return byteArrayToString(array, 0, array.length);
+    //return new String(array);
   }
 
   public static String byteArrayToString(byte[] array, int start, int end) {

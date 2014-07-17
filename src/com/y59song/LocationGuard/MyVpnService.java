@@ -1,8 +1,33 @@
+/*
+ * Vpnservice, build the virtual network interface
+ * Copyright (C) 2014  Yihang Song
+
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ */
+
 package com.y59song.LocationGuard;
 
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.app.TaskStackBuilder;
+import android.content.Context;
 import android.content.Intent;
 import android.net.VpnService;
 import android.os.ParcelFileDescriptor;
+import android.support.v4.app.NotificationCompat;
+import android.util.Log;
 import com.y59song.Forwader.ForwarderPools;
 import com.y59song.Network.LocalServer;
 import com.y59song.Plugin.IPlugin;
@@ -20,6 +45,8 @@ import java.security.GeneralSecurityException;
  */
 public class MyVpnService extends VpnService implements Runnable{
   private static final String TAG = MyVpnService.class.getSimpleName();
+  private static final boolean DEBUG = false;
+  private static final int mId = 2009;
   private Thread mThread;
 
   //The virtual network interface, get and return packets to it
@@ -73,6 +100,7 @@ public class MyVpnService extends VpnService implements Runnable{
     b.addRoute("74.125.226.0", 24);
     b.addRoute("173.194.43.0", 24);
     */
+    //b.addRoute("173.194.43.116", 32);
     b.addRoute("0.0.0.0", 0);
     b.setMtu(1500);
     mInterface = b.establish();
@@ -81,7 +109,7 @@ public class MyVpnService extends VpnService implements Runnable{
   private void setup_workers() {
     resolver = new MyNetworkHostNameResolver(this);
     clientResolver = new MyClientResolver(this);
-    String Dir = this.getExternalCacheDir().getAbsolutePath();
+    String Dir = this.getExternalFilesDir(null).getAbsolutePath();
     try {
       sslSocketFactoryFactory = new SSLSocketFactoryFactory(Dir + LocationGuard.CAName,
         Dir + LocationGuard.CertName,
@@ -148,12 +176,45 @@ public class MyVpnService extends VpnService implements Runnable{
 
   public IPlugin getNewPlugin() {
     try {
-      return (IPlugin)pluginClass.newInstance();
+      IPlugin plugin = (IPlugin)pluginClass.newInstance();
+      plugin.setContext(this);
+      return plugin;
     } catch (InstantiationException e) {
       e.printStackTrace();
     } catch (IllegalAccessException e) {
       e.printStackTrace();
     }
     return null;
+  }
+
+  public void notify(String name) {
+    NotificationCompat.Builder mBuilder =
+      new NotificationCompat.Builder(this)
+        .setSmallIcon(R.drawable.ic_launcher)
+        .setContentTitle("Location Guard")
+        .setContentText(name + " is leaking location");
+    if(DEBUG) Log.i(TAG, name);
+    // Creates an explicit intent for an Activity in your app
+    Intent resultIntent = new Intent(this, LocationGuard.class);
+
+    // The stack builder object will contain an artificial back stack for the
+    // started Activity.
+    // This ensures that navigating backward from the Activity leads out of
+    // your application to the Home screen.
+    TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
+    // Adds the back stack for the Intent (but not the Intent itself)
+    stackBuilder.addParentStack(LocationGuard.class);
+    // Adds the Intent that starts the Activity to the top of the stack
+    stackBuilder.addNextIntent(resultIntent);
+    PendingIntent resultPendingIntent =
+      stackBuilder.getPendingIntent(
+        0,
+        PendingIntent.FLAG_UPDATE_CURRENT
+      );
+    mBuilder.setContentIntent(resultPendingIntent);
+    NotificationManager mNotificationManager =
+      (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+    // mId allows you to update the notification later on.
+    mNotificationManager.notify(mId, mBuilder.build());
   }
 }
