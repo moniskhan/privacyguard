@@ -13,9 +13,9 @@ import java.util.List;
  */
 public class LocationDetection implements IPlugin {
   private final static String TAG = LocationGuard.class.getSimpleName();
-  private final boolean DEBUG = false;
+  private final boolean DEBUG = true;
   private LocationManager locationManager;
-  private final static String[] sensitiveList = {"location", "longitude", "latitude"};
+  private final static String[] sensitiveList = {"geolocation", "longitude", "latitude"};
   @Override
   public boolean handleRequest(String requestStr) {
     boolean ret = false;
@@ -33,7 +33,7 @@ public class LocationDetection implements IPlugin {
     }
     if(!DEBUG) return ret;
     else if(ret) Log.i(TAG + "request : " + ret + " : " + requestStr.length(), requestStr);
-    else Log.i(TAG + "request : " + ret + " : " + requestStr.length(), requestStr.substring(0, 100));
+    else Log.i(TAG + "request : " + ret + " : " + requestStr.length(), requestStr);
     return ret;
   }
 

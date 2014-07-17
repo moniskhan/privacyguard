@@ -3,7 +3,6 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/LocationGuard.iml" filepath="$PROJECT_DIR$/LocationGuard.iml" />
-      <module fileurl="file://$PROJECT_DIR$/../sandrop/projects/SandroProxyLib/SandroProxyLib.iml" filepath="$PROJECT_DIR$/../sandrop/projects/SandroProxyLib/SandroProxyLib.iml" />
     </modules>
   </component>
 </project>

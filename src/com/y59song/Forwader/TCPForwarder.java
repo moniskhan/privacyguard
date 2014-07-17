@@ -25,7 +25,7 @@ import java.util.ArrayDeque;
  */
 public class TCPForwarder extends AbsForwarder implements Runnable, ICommunication {
   private final String TAG = "TCPForwarder";
-  private final boolean DEBUG = true;
+  private final boolean DEBUG = false;
   protected Socket socket;
   private SocketChannel socketChannel;
   private TCPForwarderWorker receiver;

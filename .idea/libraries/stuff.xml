@@ -1,0 +1,17 @@
+<component name="libraryTable">
+  <library name="stuff">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/libs/bc.jar!/" />
+      <root url="jar://$PROJECT_DIR$/libs/bsf-2.3.0.jar!/" />
+      <root url="jar://$PROJECT_DIR$/libs/bsh-2.0b4.jar!/" />
+      <root url="jar://$PROJECT_DIR$/libs/chardet.jar!/" />
+      <root url="jar://$PROJECT_DIR$/libs/concurrent.jar!/" />
+      <root url="jar://$PROJECT_DIR$/libs/htmlparser.jar!/" />
+      <root url="jar://$PROJECT_DIR$/libs/java_websocket.jar!/" />
+      <root url="jar://$PROJECT_DIR$/libs/jcifs-1.3.14.jar!/" />
+      <root url="jar://$PROJECT_DIR$/libs/jnetutils.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
