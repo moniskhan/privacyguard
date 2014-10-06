@@ -22,22 +22,26 @@ package com.y59song.Forwader;
 import android.util.Log;
 import com.y59song.LocationGuard.MyVpnService;
 import com.y59song.Plugin.IPlugin;
+import com.y59song.Plugin.LocationDetection;
 import com.y59song.Utilities.ByteOperations;
+import com.y59song.Utilities.MyLogger;
 import org.sandrop.webscarab.model.ConnectionDescriptor;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.Arrays;
 
 
 public class MySocketForwarder extends Thread {
   private static String TAG = MySocketForwarder.class.getSimpleName();
+  private static boolean EVALUATE = true;
   private static boolean DEBUG = false;
-  private static boolean PROTECT = false;
+  private static boolean PROTECT = true;
   private boolean outgoing = false;
-  private IPlugin plugin;
+  private ArrayList<IPlugin> plugins;
   private MyVpnService vpnService;
   private String appName = null;
 
@@ -83,7 +87,7 @@ public class MySocketForwarder extends Thread {
     this.out = out;
     this.outgoing = isOutgoing;
     this.vpnService = vpnService;
-    this.plugin = vpnService.getNewPlugin();
+    this.plugins = vpnService.getNewPlugins();
     setDaemon(true);
   }
 
@@ -93,15 +97,30 @@ public class MySocketForwarder extends Thread {
       int got;
       while ((got = in.read(buff)) > -1){
         String msg = new String(Arrays.copyOfRange(buff, 0, got));
-        boolean ret = outgoing ? plugin.handleRequest(msg) : plugin.handleResponse(msg);
-        if(DEBUG) Log.i(TAG, "" + (outgoing) + " " + got + " " + msg);
-        if(ret && outgoing) {
-          if(appName == null) {
-            ConnectionDescriptor des = vpnService.getClientResolver().getClientDescriptorBySocket(inSocket);
-            if(des != null) appName = des.getName();
-          }
-          Log.i("Leak Location", appName == null ? "Unknown" : appName);
-          vpnService.notify(appName == null ? "Unknown" : appName);
+        if(EVALUATE) {
+            if(outgoing) {
+                if (appName == null) {
+                    ConnectionDescriptor des = vpnService.getClientResolver().getClientDescriptorBySocket(inSocket);
+                    if (des != null) appName = des.getName();
+                }
+                MyLogger.log(appName, msg, ((LocationDetection) plugins.get(0)).getLocations());
+            }
+        } else {
+            for(IPlugin plugin : plugins) {
+                String ret = outgoing ? plugin.handleRequest(msg) : plugin.handleResponse(msg);
+                if(DEBUG) Log.i(TAG, "" + (outgoing) + " " + got + " " + msg);
+                if(ret != null && outgoing) {
+                    if(appName == null) {
+                        ConnectionDescriptor des = vpnService.getClientResolver().getClientDescriptorBySocket(inSocket);
+                        if(des != null) appName = des.getName();
+                    }
+                    vpnService.notify(appName + " " + ret);
+                }
+                msg = outgoing ? plugin.modifyRequest(msg) : plugin.modifyResponse(msg);
+            }
+            //buff = msg.getBytes();
+            //got = buff.length;
+            if(PROTECT && outgoing) Log.i(TAG, new String(Arrays.copyOfRange(buff, 0, got)));
         }
         out.write(buff, 0, got);
         out.flush();

@@ -7,9 +7,9 @@ import android.content.Context;
  */
 public interface IPlugin {
   // May modify the content of the request and response
-  public boolean handleRequest(String request);
-  public boolean handleResponse(String response);
-  public byte[] modifyRequest(byte[] request);
-  public byte[] modifyResponse(byte[] response);
+  public String handleRequest(String request);
+  public String handleResponse(String response);
+  public String modifyRequest(String request);
+  public String modifyResponse(String response);
   public void setContext(Context context);
 }

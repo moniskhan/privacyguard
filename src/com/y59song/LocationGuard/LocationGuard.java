@@ -27,6 +27,7 @@ import android.net.VpnService;
 import android.os.Bundle;
 import android.security.KeyChain;
 import android.view.View;
+import com.y59song.Utilities.MyLogger;
 import org.sandrop.webscarab.plugin.proxy.SSLSocketFactoryFactory;
 
 import javax.security.cert.X509Certificate;
@@ -54,6 +55,7 @@ public class LocationGuard extends Activity implements View.OnClickListener {
     Intent intent = KeyChain.createInstallIntent();
     try {
       String Dir = this.getExternalFilesDir(null).getAbsolutePath();
+      MyLogger.dir = Dir; // TODO, bad practice
       new SSLSocketFactoryFactory(Dir + CAName, Dir + CertName, KeyType, Password.toCharArray());
       String CERT_FILE = Dir + CAName + "_export.crt";
       File certFile = new File(CERT_FILE);

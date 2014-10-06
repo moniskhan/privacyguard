@@ -5,7 +5,9 @@ import android.location.Location;
 import android.location.LocationManager;
 import android.util.Log;
 import com.y59song.LocationGuard.LocationGuard;
+import com.y59song.Utilities.ByteOperations;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -13,42 +15,65 @@ import java.util.List;
  */
 public class LocationDetection implements IPlugin {
   private final static String TAG = LocationGuard.class.getSimpleName();
-  private final boolean DEBUG = true;
+  private final boolean DEBUG = false;
   private LocationManager locationManager;
   private final static String[] sensitiveList = {"geolocation", "longitude", "latitude"};
+  private ArrayList<Double> latitudes = new ArrayList<Double>(), longitudes = new ArrayList<Double>();
+
+  public ArrayList<Location> getLocations() {
+      List<String> providers = locationManager.getAllProviders();
+      ArrayList<Location> ret = new ArrayList<Location>();
+      for(String provider : providers) {
+          Location loc = locationManager.getLastKnownLocation(provider);
+          if(loc == null) continue;
+          ret.add(loc);
+      }
+      return ret;
+  }
+
+
   @Override
-  public boolean handleRequest(String requestStr) {
+  public String handleRequest(String requestStr) {
     boolean ret = false;
     for(String s : sensitiveList) if(requestStr.contains(s)) ret = true;
-    Location loc = null;
-    List<String> providers = locationManager.getAllProviders();
-    for(String provider : providers) {
-      loc = locationManager.getLastKnownLocation(provider);
-      if(loc != null) break;
+
+    ArrayList<Location> locations = getLocations();
+    for(Location loc : locations) {
+        String latS = "" + (int)loc.getLatitude(), lonS = "" + (int)loc.getLongitude();
+        if(DEBUG) Log.i(TAG, "" + loc.getLatitude() + " " + loc.getLongitude() + " " + latS + " " + lonS);
+        ret |= requestStr.contains(latS) && requestStr.contains(lonS);
+        ret |= requestStr.contains(latS.replace(".", "")) && requestStr.contains(lonS.replace(".", ""));
+        if(DEBUG) Log.i(TAG, latS + " " + lonS);
     }
-    if(loc != null) {
-      String latS = String.format("%.2f", loc.getLatitude()), lonS = String.format("%.2f", loc.getLongitude());
-      ret |= requestStr.contains(latS) || requestStr.contains(lonS);
-      ret |= requestStr.contains(latS.replace(".", "")) || requestStr.contains(lonS.replace(".", ""));
-    }
-    if(!DEBUG) return ret;
+
+    String msg = ret ? "is leaking location" : null;
+    if(!DEBUG) return msg;
     else if(ret) Log.i(TAG + "request : " + ret + " : " + requestStr.length(), requestStr);
-    else Log.i(TAG + "request : " + ret + " : " + requestStr.length(), requestStr);
-    return ret;
+    //else Log.i(TAG + "request : " + ret + " : " + requestStr.length(), requestStr);\\
+
+
+    return msg;
   }
 
   @Override
-  public boolean handleResponse(String responseStr) {
-    return false;
+  public String handleResponse(String responseStr) {
+      //if(DEBUG) Log.i(TAG + "response : ", responseStr);
+      return null;
   }
 
   @Override
-  public byte[] modifyRequest(byte[] request) {
-    return request;
+  public String modifyRequest(String request) {
+      if(DEBUG) Log.i(TAG, request);
+      request = request.replace("longitude=0", "longitude=1"); // air push
+      request = request.replace("ll=43", "ll=44"); // mopub
+      request = request.replace("43.466667", "35.422222"); // amazon
+      request = request.replace("-80.55", "139.46"); // amazon
+      if(DEBUG) Log.i(TAG, request);
+      return request;
   }
 
   @Override
-  public byte[] modifyResponse(byte[] response) {
+  public String modifyResponse(String response) {
     return response;
   }
 
@@ -56,4 +81,5 @@ public class LocationDetection implements IPlugin {
   public void setContext(Context context) {
     locationManager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
   }
+
 }

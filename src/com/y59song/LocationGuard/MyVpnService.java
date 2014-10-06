@@ -30,14 +30,17 @@ import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import com.y59song.Forwader.ForwarderPools;
 import com.y59song.Network.LocalServer;
+import com.y59song.Plugin.ContactDetection;
 import com.y59song.Plugin.IPlugin;
 import com.y59song.Plugin.LocationDetection;
+import com.y59song.Plugin.PhoneStateDetection;
 import com.y59song.Utilities.MyClientResolver;
 import com.y59song.Utilities.MyNetworkHostNameResolver;
 import org.sandrop.webscarab.plugin.proxy.SSLSocketFactoryFactory;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.util.ArrayList;
 
 
 /**
@@ -45,8 +48,8 @@ import java.security.GeneralSecurityException;
  */
 public class MyVpnService extends VpnService implements Runnable{
   private static final String TAG = MyVpnService.class.getSimpleName();
-  private static final boolean DEBUG = false;
-  private static final int mId = 2009;
+  private static final boolean DEBUG = true;
+  private static int mId = 0;
   private Thread mThread;
 
   //The virtual network interface, get and return packets to it
@@ -67,7 +70,7 @@ public class MyVpnService extends VpnService implements Runnable{
   private LocalServer localServer;
 
   // Plugin
-  private Class pluginClass = LocationDetection.class;
+  private Class pluginClass[] = {LocationDetection.class, PhoneStateDetection.class, ContactDetection.class};
 
   @Override
   public int onStartCommand(Intent intent, int flags, int startId) {
@@ -174,11 +177,15 @@ public class MyVpnService extends VpnService implements Runnable{
     return forwarderPools;
   }
 
-  public IPlugin getNewPlugin() {
+  public ArrayList<IPlugin> getNewPlugins() {
+    ArrayList<IPlugin> ret = new ArrayList<IPlugin>();
     try {
-      IPlugin plugin = (IPlugin)pluginClass.newInstance();
-      plugin.setContext(this);
-      return plugin;
+      for(Class c : pluginClass) {
+        IPlugin temp = (IPlugin)c.newInstance();
+        temp.setContext(this);
+        ret.add(temp);
+      }
+      return ret;
     } catch (InstantiationException e) {
       e.printStackTrace();
     } catch (IllegalAccessException e) {
@@ -187,13 +194,13 @@ public class MyVpnService extends VpnService implements Runnable{
     return null;
   }
 
-  public void notify(String name) {
+  public void notify(String msg) {
     NotificationCompat.Builder mBuilder =
       new NotificationCompat.Builder(this)
         .setSmallIcon(R.drawable.ic_launcher)
         .setContentTitle("Location Guard")
-        .setContentText(name + " is leaking location");
-    if(DEBUG) Log.i(TAG, name);
+        .setContentText(msg);
+    if(DEBUG) Log.i(TAG, msg);
     // Creates an explicit intent for an Activity in your app
     Intent resultIntent = new Intent(this, LocationGuard.class);
 
@@ -215,6 +222,6 @@ public class MyVpnService extends VpnService implements Runnable{
     NotificationManager mNotificationManager =
       (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
     // mId allows you to update the notification later on.
-    mNotificationManager.notify(mId, mBuilder.build());
+    mNotificationManager.notify(mId ++, mBuilder.build());
   }
 }
