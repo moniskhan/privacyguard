@@ -12,15 +12,17 @@ import java.util.ArrayList;
 public class MyLogger {
     public static String dir;
     private static boolean DEBUG = false;
-    public static void log(String packageName, String msg, ArrayList<Location> locations) {
+    public static void log(String packageName, String time, String msg, ArrayList<Location> locations) {
         if(DEBUG) Log.i("MyLogger", packageName + " " + msg);
         File f = new File(dir + "/" + packageName);
         try {
             PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(f, true)));
+            out.println("Time : "  + time);
             for(Location loc : locations) {
                 out.println(loc.getProvider() + " : lon=" + loc.getLongitude() + ", lat=" + loc.getLatitude());
             }
             out.println(msg);
+            out.println("");
             out.close();
         } catch (IOException e) {
             e.printStackTrace();

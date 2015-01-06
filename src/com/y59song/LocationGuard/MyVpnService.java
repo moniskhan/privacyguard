@@ -112,7 +112,7 @@ public class MyVpnService extends VpnService implements Runnable{
   private void setup_workers() {
     resolver = new MyNetworkHostNameResolver(this);
     clientResolver = new MyClientResolver(this);
-    String Dir = this.getExternalFilesDir(null).getAbsolutePath();
+    String Dir = this.getCacheDir().getAbsolutePath();
     try {
       sslSocketFactoryFactory = new SSLSocketFactoryFactory(Dir + LocationGuard.CAName,
         Dir + LocationGuard.CertName,

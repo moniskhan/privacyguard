@@ -15,9 +15,9 @@ import java.util.List;
  */
 public class LocationDetection implements IPlugin {
   private final static String TAG = LocationGuard.class.getSimpleName();
-  private final boolean DEBUG = false;
+  private final boolean DEBUG = true;
   private LocationManager locationManager;
-  private final static String[] sensitiveList = {"geolocation", "longitude", "latitude"};
+  //private final static String[] sensitiveList = {"geolocation", "longitude", "latitude"};
   private ArrayList<Double> latitudes = new ArrayList<Double>(), longitudes = new ArrayList<Double>();
 
   public ArrayList<Location> getLocations() {
@@ -35,11 +35,12 @@ public class LocationDetection implements IPlugin {
   @Override
   public String handleRequest(String requestStr) {
     boolean ret = false;
-    for(String s : sensitiveList) if(requestStr.contains(s)) ret = true;
+    //for(String s : sensitiveList) if(requestStr.contains(s)) ret = true;
 
     ArrayList<Location> locations = getLocations();
     for(Location loc : locations) {
-        String latS = "" + (int)loc.getLatitude(), lonS = "" + (int)loc.getLongitude();
+        double latD = Math.round(loc.getLatitude() * 100) / 100.0, lonD = Math.round(loc.getLongitude() * 100) / 100.0;
+        String latS = "" + latD, lonS = "" + lonD;
         if(DEBUG) Log.i(TAG, "" + loc.getLatitude() + " " + loc.getLongitude() + " " + latS + " " + lonS);
         ret |= requestStr.contains(latS) && requestStr.contains(lonS);
         ret |= requestStr.contains(latS.replace(".", "")) && requestStr.contains(lonS.replace(".", ""));
@@ -63,12 +64,14 @@ public class LocationDetection implements IPlugin {
 
   @Override
   public String modifyRequest(String request) {
+      /*
       if(DEBUG) Log.i(TAG, request);
       request = request.replace("longitude=0", "longitude=1"); // air push
       request = request.replace("ll=43", "ll=44"); // mopub
       request = request.replace("43.466667", "35.422222"); // amazon
       request = request.replace("-80.55", "139.46"); // amazon
       if(DEBUG) Log.i(TAG, request);
+      */
       return request;
   }
 
