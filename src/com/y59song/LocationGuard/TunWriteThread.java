@@ -63,7 +63,6 @@ public class TunWriteThread extends Thread {
         }
       }
       try {
-        if(DEBUG) Log.d(TAG, ByteOperations.byteArrayToString(temp));
         localOut.write(temp);
         localOut.flush();
       } catch (Exception e) {

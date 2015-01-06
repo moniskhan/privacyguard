@@ -26,6 +26,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.VpnService;
 import android.os.ParcelFileDescriptor;
+import android.security.KeyChain;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import com.y59song.Forwader.ForwarderPools;
@@ -34,10 +35,12 @@ import com.y59song.Plugin.ContactDetection;
 import com.y59song.Plugin.IPlugin;
 import com.y59song.Plugin.LocationDetection;
 import com.y59song.Plugin.PhoneStateDetection;
+import com.y59song.Utilities.Certificate.CertificateManager;
 import com.y59song.Utilities.MyClientResolver;
 import com.y59song.Utilities.MyNetworkHostNameResolver;
 import org.sandrop.webscarab.plugin.proxy.SSLSocketFactoryFactory;
 
+import javax.security.cert.CertificateEncodingException;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
@@ -46,7 +49,7 @@ import java.util.ArrayList;
 /**
  * Created by frank on 2014-03-26.
  */
-public class MyVpnService extends VpnService implements Runnable{
+public class MyVpnService extends VpnService implements Runnable {
   private static final String TAG = MyVpnService.class.getSimpleName();
   private static final boolean DEBUG = true;
   private static int mId = 0;
@@ -61,8 +64,11 @@ public class MyVpnService extends VpnService implements Runnable{
   private ForwarderPools forwarderPools;
 
   //SSL stuff
-
   private SSLSocketFactoryFactory sslSocketFactoryFactory;
+  protected static final String CAName = "LocationGuard_CA";
+  protected static final String CertName = "LocationGuard_Cert";
+  protected static final String KeyType = "PKCS12";
+  protected static final String Password = "";
 
   //Network
   private MyNetworkHostNameResolver resolver;
@@ -83,6 +89,7 @@ public class MyVpnService extends VpnService implements Runnable{
 
  @Override
   public void run() {
+    installCertificate();
     setup_network();
     setup_workers();
     wait_to_close();
@@ -101,20 +108,24 @@ public class MyVpnService extends VpnService implements Runnable{
     mInterface = b.establish();
   }
 
+  public void installCertificate() {
+    String Dir = this.getCacheDir().getAbsolutePath();
+    sslSocketFactoryFactory = CertificateManager.generateCACertificate(Dir, CAName, CertName, KeyType, Password.toCharArray());
+    Intent intent = KeyChain.createInstallIntent();
+    try {
+      intent.putExtra(KeyChain.EXTRA_CERTIFICATE, CertificateManager.getCACertificate(Dir, CAName).getEncoded());
+    } catch (CertificateEncodingException e) {
+      e.printStackTrace();
+    }
+    intent.putExtra(KeyChain.EXTRA_NAME, CAName);
+    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+    startActivity(intent);
+  }
+
   private void setup_workers() {
     resolver = new MyNetworkHostNameResolver(this);
     clientResolver = new MyClientResolver(this);
-    String Dir = this.getCacheDir().getAbsolutePath();
-    try {
-      sslSocketFactoryFactory = new SSLSocketFactoryFactory(Dir + LocationGuard.CAName,
-        Dir + LocationGuard.CertName,
-        LocationGuard.KeyType,
-        LocationGuard.Password.toCharArray());
-    } catch (GeneralSecurityException e) {
-      e.printStackTrace();
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
+
 
     localServer = new LocalServer(this);
     localServer.start();

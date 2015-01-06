@@ -11,9 +11,8 @@ import java.util.ArrayList;
  */
 public class MyLogger {
     public static String dir;
-    private static boolean DEBUG = false;
+
     public static void log(String packageName, String time, String msg, ArrayList<Location> locations) {
-        if(DEBUG) Log.i("MyLogger", packageName + " " + msg);
         File f = new File(dir + "/" + packageName);
         try {
             PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(f, true)));

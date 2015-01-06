@@ -35,7 +35,6 @@ import java.util.ArrayDeque;
  */
 public class TunReadThread extends Thread {
   private final String TAG = TunReadThread.class.getSimpleName();
-  private final boolean DEBUG = false;
   private final FileInputStream localIn;
   private final int limit = 2048;
   private final MyVpnService vpnService;
@@ -55,16 +54,12 @@ public class TunReadThread extends Thread {
       ByteBuffer packet = ByteBuffer.allocate(limit);
       int length;
       dispatcher.start();
-      if(DEBUG) Log.d(TAG, "Receiving");
       while (!isInterrupted()) {
-        if(DEBUG) Log.d(TAG, "Receiving");
         packet.clear();
         length = localIn.getChannel().read(packet);
         if(length > 0) {
           packet.flip();
-          if(DEBUG) Log.d(TAG, "Length : " + length);
           final IPDatagram ip = IPDatagram.create(packet);
-          if(DEBUG) Log.d(TAG, ByteOperations.byteArrayToHexString(ip.toByteArray()));
           if(ip != null) {
             synchronized (readQueue) {
               readQueue.addLast(ip);

@@ -27,48 +27,33 @@ import android.net.VpnService;
 import android.os.Bundle;
 import android.security.KeyChain;
 import android.view.View;
+import com.y59song.Utilities.Certificate.CertificateManager;
 import com.y59song.Utilities.MyLogger;
 import org.sandrop.webscarab.plugin.proxy.SSLSocketFactoryFactory;
 
+import javax.security.cert.CertificateEncodingException;
 import javax.security.cert.X509Certificate;
 import java.io.File;
 import java.io.FileInputStream;
 import java.util.List;
 
 public class LocationGuard extends Activity implements View.OnClickListener {
+
   private Intent intent;
-  public static final String CAName = "/LocationGuard_CA";
-  public static final String CertName = "/LocationGuard_Cert";
-  public static final String KeyType = "PKCS12";
-  public static final String Password = "";
+
   public static final boolean debug = false;
+
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.main);
     intent = new Intent(this, MyVpnService.class);
     findViewById(R.id.connect).setOnClickListener(this);
-    installCertificate();
+    initialize();
   }
 
-  public void installCertificate() {
-    Intent intent = KeyChain.createInstallIntent();
-    try {
-      String Dir = this.getCacheDir().getAbsolutePath();
-      MyLogger.dir = Dir; // TODO, bad practice
-      new SSLSocketFactoryFactory(Dir + CAName, Dir + CertName, KeyType, Password.toCharArray());
-      String CERT_FILE = Dir + CAName + "_export.crt";
-      File certFile = new File(CERT_FILE);
-      FileInputStream certIs = new FileInputStream(CERT_FILE);
-      byte [] cert = new byte[(int)certFile.length()];
-      certIs.read(cert);
-      X509Certificate x509 = X509Certificate.getInstance(cert);
-      intent.putExtra(KeyChain.EXTRA_CERTIFICATE, x509.getEncoded());
-      intent.putExtra(KeyChain.EXTRA_NAME, "Test");
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
-    startActivity(intent);
+  public void initialize() {
+    MyLogger.dir = this.getCacheDir().getAbsolutePath();
   }
 
   @Override
@@ -95,14 +80,13 @@ public class LocationGuard extends Activity implements View.OnClickListener {
   }
 
   public static boolean isServiceRunning(Context mContext,String className) {
-    ActivityManager activityManager = (ActivityManager)
-      mContext.getSystemService(Context.ACTIVITY_SERVICE);
+    ActivityManager activityManager = (ActivityManager)mContext.getSystemService(Context.ACTIVITY_SERVICE);
     List<ActivityManager.RunningServiceInfo> serviceList = activityManager.getRunningServices(30);
 
-    if (!(serviceList.size()>0)) return false;
-    for (int i=0; i<serviceList.size(); i++)
-      if (serviceList.get(i).service.getClassName().equals(className) == true)
+    for (ActivityManager.RunningServiceInfo serviceInfo : serviceList) {
+      if (serviceInfo.service.getClassName().equals(className))
         return true;
+    }
 
     return false;
   }
