@@ -48,7 +48,7 @@ import java.util.ArrayList;
 /**
  * Created by frank on 2014-03-26.
  */
-public class MyVpnService extends VpnService {
+public class MyVpnService extends VpnService implements Runnable {
   private static final String TAG = MyVpnService.class.getSimpleName();
   private static final boolean DEBUG = true;
   private static int mId = 0;
@@ -57,6 +57,7 @@ public class MyVpnService extends VpnService {
   private ParcelFileDescriptor mInterface;
   private TunWriteThread writeThread;
   private TunReadThread readThread;
+  private Thread uiThread;
 
   //Pools
   private ForwarderPools forwarderPools;
@@ -78,10 +79,8 @@ public class MyVpnService extends VpnService {
 
   @Override
   public int onStartCommand(Intent intent, int flags, int startId) {
-    installCertificate();
-    forwarderPools = new ForwarderPools(this);
-    setup_network();
-    setup_workers();
+    uiThread = new Thread(this);
+    uiThread.start();
     return 0;
   }
 
@@ -93,11 +92,18 @@ public class MyVpnService extends VpnService {
       readThread.interrupt();
       writeThread.interrupt();
       localServer.interrupt();
-      wait_to_close();
       mInterface.close();
     } catch (IOException e) {
       e.printStackTrace();
     }
+  }
+
+  @Override
+  public void run() {
+    installCertificate();
+    setup_network();
+    setup_workers();
+    wait_to_close();
   }
 
   public void installCertificate() {
@@ -121,6 +127,7 @@ public class MyVpnService extends VpnService {
     b.addRoute("0.0.0.0", 0);
     b.setMtu(1500);
     mInterface = b.establish();
+    forwarderPools = new ForwarderPools(this);
   }
 
   private void setup_workers() {

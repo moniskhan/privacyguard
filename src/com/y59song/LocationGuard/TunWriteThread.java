@@ -30,31 +30,22 @@ import java.util.ArrayDeque;
 public class TunWriteThread extends Thread {
   private final FileOutputStream localOut;
   private final ArrayDeque<byte[]> writeQueue = new ArrayDeque<byte[]>();
-  private final MyVpnService vpnService;
 
   public TunWriteThread(FileDescriptor fd, MyVpnService vpnService) {
     localOut = new FileOutputStream(fd);
-    this.vpnService = vpnService;
   }
 
   public void run() {
     byte[] temp;
-    while(true) {
+    while(!isInterrupted()) {
       synchronized(writeQueue) {
-        while ((temp = writeQueue.pollFirst()) == null) {
+        if ((temp = writeQueue.pollFirst()) == null) {
           try {
             writeQueue.wait();
           } catch (InterruptedException e) {
             e.printStackTrace();
           }
-          if (isInterrupted()) {
-            try {
-              clean();
-            } catch (IOException e) {
-              e.printStackTrace();
-            }
-            return;
-          } else continue;
+          continue;
         }
       }
       try {
@@ -64,6 +55,7 @@ public class TunWriteThread extends Thread {
         e.printStackTrace();
       }
     }
+    clean();
   }
 
   public void write(byte[] data) {
@@ -75,8 +67,12 @@ public class TunWriteThread extends Thread {
 
   }
 
-  private void clean() throws IOException {
-    localOut.close();
+  private void clean() {
+    try {
+      localOut.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
     writeQueue.clear();
   }
 }
