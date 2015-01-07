@@ -35,6 +35,7 @@ import javax.security.cert.CertificateEncodingException;
 import javax.security.cert.X509Certificate;
 import java.io.File;
 import java.io.FileInputStream;
+import java.security.KeyStoreException;
 import java.util.List;
 
 public class LocationGuard extends Activity implements View.OnClickListener {
@@ -49,10 +50,29 @@ public class LocationGuard extends Activity implements View.OnClickListener {
     intent = new Intent(this, MyVpnService.class);
     findViewById(R.id.connect).setOnClickListener(this);
     initialize();
+    installCertificate();
   }
 
   public void initialize() {
     MyLogger.dir = this.getCacheDir().getAbsolutePath();
+  }
+
+  public void installCertificate() {
+    String Dir = this.getCacheDir().getAbsolutePath();
+    try {
+      if(CertificateManager.isCACertificateInstalled(Dir, MyVpnService.CAName, MyVpnService.KeyType, MyVpnService.Password))
+        return;
+    } catch (KeyStoreException e) {
+      e.printStackTrace();
+    }
+    Intent intent = KeyChain.createInstallIntent();
+    try {
+      intent.putExtra(KeyChain.EXTRA_CERTIFICATE, CertificateManager.getCACertificate(Dir, MyVpnService.CAName).getEncoded());
+    } catch (CertificateEncodingException e) {
+      e.printStackTrace();
+    }
+    intent.putExtra(KeyChain.EXTRA_NAME, MyVpnService.CAName);
+    startActivity(intent);
   }
 
   @Override

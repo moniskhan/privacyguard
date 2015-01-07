@@ -100,25 +100,12 @@ public class MyVpnService extends VpnService implements Runnable {
 
   @Override
   public void run() {
-    installCertificate();
     setup_network();
     setup_workers();
     wait_to_close();
   }
 
-  public void installCertificate() {
-    String Dir = this.getCacheDir().getAbsolutePath();
-    sslSocketFactoryFactory = CertificateManager.generateCACertificate(Dir, CAName, CertName, KeyType, Password.toCharArray());
-    Intent intent = KeyChain.createInstallIntent();
-    try {
-      intent.putExtra(KeyChain.EXTRA_CERTIFICATE, CertificateManager.getCACertificate(Dir, CAName).getEncoded());
-    } catch (CertificateEncodingException e) {
-      e.printStackTrace();
-    }
-    intent.putExtra(KeyChain.EXTRA_NAME, CAName);
-    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-    startActivity(intent);
-  }
+
 
   private void setup_network() {
     Builder b = new Builder();
@@ -128,6 +115,8 @@ public class MyVpnService extends VpnService implements Runnable {
     b.setMtu(1500);
     mInterface = b.establish();
     forwarderPools = new ForwarderPools(this);
+    sslSocketFactoryFactory = CertificateManager.generateCACertificate(this.getCacheDir().getAbsolutePath(), CAName,
+      CertName, KeyType, Password.toCharArray());
   }
 
   private void setup_workers() {
