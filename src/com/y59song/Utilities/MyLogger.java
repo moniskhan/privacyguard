@@ -2,6 +2,7 @@ package com.y59song.Utilities;
 
 import android.location.Location;
 import android.util.Log;
+import com.y59song.LocationGuard.LocationGuard;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -25,6 +26,12 @@ public class MyLogger {
             out.close();
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    public static void debugInfo(String tag, String msg) {
+        if(LocationGuard.debug) {
+            Log.i(tag, msg);
         }
     }
 }

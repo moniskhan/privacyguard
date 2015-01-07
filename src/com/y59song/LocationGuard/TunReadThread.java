@@ -19,10 +19,9 @@
 
 package com.y59song.LocationGuard;
 
-import android.util.Log;
 import com.y59song.Forwader.ForwarderPools;
 import com.y59song.Network.IP.IPDatagram;
-import com.y59song.Utilities.ByteOperations;
+import com.y59song.Utilities.MyLogger;
 
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
@@ -34,7 +33,6 @@ import java.util.ArrayDeque;
  * Created by y59song on 06/06/14.
  */
 public class TunReadThread extends Thread {
-  private final String TAG = TunReadThread.class.getSimpleName();
   private final FileInputStream localIn;
   private final int limit = 2048;
   private final MyVpnService vpnService;
@@ -66,7 +64,10 @@ public class TunReadThread extends Thread {
               readQueue.notify();
             }
           }
-        } else Thread.sleep(100);
+        } else {
+          MyLogger.debugInfo("TunReadThread", "length of packet read from interface is non-positive, sleep");
+          Thread.sleep(100);
+        }
       }
       clean();
     } catch (IOException e) {

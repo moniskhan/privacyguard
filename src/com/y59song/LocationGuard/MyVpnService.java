@@ -48,11 +48,10 @@ import java.util.ArrayList;
 /**
  * Created by frank on 2014-03-26.
  */
-public class MyVpnService extends VpnService implements Runnable {
+public class MyVpnService extends VpnService {
   private static final String TAG = MyVpnService.class.getSimpleName();
   private static final boolean DEBUG = true;
   private static int mId = 0;
-  private Thread mThread;
 
   //The virtual network interface, get and return packets to it
   private ParcelFileDescriptor mInterface;
@@ -70,8 +69,8 @@ public class MyVpnService extends VpnService implements Runnable {
   protected static final String Password = "";
 
   //Network
-  private MyNetworkHostNameResolver resolver;
-  private MyClientResolver clientResolver;
+  private MyNetworkHostNameResolver hostNameResolver;
+  private MyClientResolver clientAppResolver;
   private LocalServer localServer;
 
   // Plugin
@@ -79,10 +78,10 @@ public class MyVpnService extends VpnService implements Runnable {
 
   @Override
   public int onStartCommand(Intent intent, int flags, int startId) {
-    if(mThread != null) mThread.interrupt();
-    mThread = new Thread(this, getClass().getSimpleName());
-    mThread.start();
+    installCertificate();
     forwarderPools = new ForwarderPools(this);
+    setup_network();
+    setup_workers();
     return 0;
   }
 
@@ -94,31 +93,11 @@ public class MyVpnService extends VpnService implements Runnable {
       readThread.interrupt();
       writeThread.interrupt();
       localServer.interrupt();
+      wait_to_close();
       mInterface.close();
     } catch (IOException e) {
       e.printStackTrace();
     }
-  }
-
- @Override
-  public void run() {
-    installCertificate();
-    setup_network();
-    setup_workers();
-    wait_to_close();
-  }
-
-  public void fetchResponse(byte[] response) {
-    writeThread.write(response);
-  }
-
-  private void setup_network() {
-    Builder b = new Builder();
-    b.addAddress("10.8.0.1", 32);
-    b.addDnsServer("8.8.8.8");
-    b.addRoute("0.0.0.0", 0);
-    b.setMtu(1500);
-    mInterface = b.establish();
   }
 
   public void installCertificate() {
@@ -135,9 +114,18 @@ public class MyVpnService extends VpnService implements Runnable {
     startActivity(intent);
   }
 
+  private void setup_network() {
+    Builder b = new Builder();
+    b.addAddress("10.8.0.1", 32);
+    b.addDnsServer("8.8.8.8");
+    b.addRoute("0.0.0.0", 0);
+    b.setMtu(1500);
+    mInterface = b.establish();
+  }
+
   private void setup_workers() {
-    resolver = new MyNetworkHostNameResolver(this);
-    clientResolver = new MyClientResolver(this);
+    hostNameResolver = new MyNetworkHostNameResolver(this);
+    clientAppResolver = new MyClientResolver(this);
 
     localServer = new LocalServer(this);
     localServer.start();
@@ -163,16 +151,20 @@ public class MyVpnService extends VpnService implements Runnable {
     }
   }
 
+  public void fetchResponse(byte[] response) {
+    writeThread.write(response);
+  }
+
   public SSLSocketFactoryFactory getSSlSocketFactoryFactory() {
     return sslSocketFactoryFactory;
   }
 
-  public MyNetworkHostNameResolver getResolver() {
-    return resolver;
+  public MyNetworkHostNameResolver getHostNameResolver() {
+    return hostNameResolver;
   }
 
-  public MyClientResolver getClientResolver() {
-    return clientResolver;
+  public MyClientResolver getClientAppResolver() {
+    return clientAppResolver;
   }
 
   public ForwarderPools getForwarderPools() {

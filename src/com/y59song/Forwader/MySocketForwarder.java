@@ -19,12 +19,10 @@
 
 package com.y59song.Forwader;
 
-import android.text.format.DateFormat;
 import android.util.Log;
 import com.y59song.LocationGuard.MyVpnService;
 import com.y59song.Plugin.IPlugin;
 import com.y59song.Plugin.LocationDetection;
-import com.y59song.Utilities.ByteOperations;
 import com.y59song.Utilities.MyLogger;
 import org.sandrop.webscarab.model.ConnectionDescriptor;
 
@@ -110,7 +108,7 @@ public class MySocketForwarder extends Thread {
         if(EVALUATE) {
             if(outgoing) {
                 if (appName == null) {
-                    ConnectionDescriptor des = vpnService.getClientResolver().getClientDescriptorBySocket(inSocket);
+                    ConnectionDescriptor des = vpnService.getClientAppResolver().getClientDescriptorBySocket(inSocket);
                     if (des != null) appName = des.getNamespace();
                 }
                 MyLogger.log(appName, df.format(new Date()), "IP : " + destIP + "\nRequest : " + msg, ((LocationDetection) plugins.get(0)).getLocations());
@@ -121,7 +119,7 @@ public class MySocketForwarder extends Thread {
                 if(DEBUG) Log.i(TAG, "" + (outgoing) + " " + got + " " + msg);
                 if(ret != null && outgoing) {
                     if(appName == null) {
-                        ConnectionDescriptor des = vpnService.getClientResolver().getClientDescriptorBySocket(inSocket);
+                        ConnectionDescriptor des = vpnService.getClientAppResolver().getClientDescriptorBySocket(inSocket);
                         if(des != null) {
                             appName = des.getName();
                             packageName = des.getNamespace();

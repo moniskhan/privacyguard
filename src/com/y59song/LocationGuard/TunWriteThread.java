@@ -19,9 +19,6 @@
 
 package com.y59song.LocationGuard;
 
-import android.util.Log;
-import com.y59song.Utilities.ByteOperations;
-
 import java.io.FileDescriptor;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -31,8 +28,6 @@ import java.util.ArrayDeque;
  * Created by y59song on 02/06/14.
  */
 public class TunWriteThread extends Thread {
-  private final String TAG = TunWriteThread.class.getSimpleName();
-  private final boolean DEBUG = false;
   private final FileOutputStream localOut;
   private final ArrayDeque<byte[]> writeQueue = new ArrayDeque<byte[]>();
   private final MyVpnService vpnService;

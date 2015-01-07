@@ -38,10 +38,9 @@ import java.io.FileInputStream;
 import java.util.List;
 
 public class LocationGuard extends Activity implements View.OnClickListener {
-
   private Intent intent;
 
-  public static final boolean debug = false;
+  public static final boolean debug = true;
 
   @Override
   public void onCreate(Bundle savedInstanceState) {

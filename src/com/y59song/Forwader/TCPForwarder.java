@@ -283,7 +283,7 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
       socket = socketChannel.socket();
       socket.setReuseAddress(true);
       socket.bind(new InetSocketAddress(InetAddress.getLocalHost(), src_port));
-      vpnService.getClientResolver().addPort(src_port, dstAddress.getHostAddress(), dst_port);
+      vpnService.getClientAppResolver().addPort(src_port, dstAddress.getHostAddress(), dst_port);
       socketChannel.connect(new InetSocketAddress(LocalServer.port));
       socketChannel.configureBlocking(false);
       Selector selector = Selector.open();

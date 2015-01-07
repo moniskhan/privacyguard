@@ -58,13 +58,13 @@ public class LocalServer extends Thread {
     @Override
     public void run() {
       try {
-        ConnectionDescriptor descriptor = vpnService.getClientResolver().getClientDescriptorByPort(client.getPort());
+        ConnectionDescriptor descriptor = vpnService.getClientAppResolver().getClientDescriptorByPort(client.getPort());
         SocketChannel targetChannel = SocketChannel.open();
         Socket target = targetChannel.socket();
         vpnService.protect(target);
         targetChannel.connect(new InetSocketAddress(descriptor.getRemoteAddress(), descriptor.getRemotePort()));
         if(descriptor != null && descriptor.getRemotePort() == SSLPort && !sslPinning.contains(descriptor.getRemoteAddress())) {
-          SiteData remoteData = vpnService.getResolver().getSecureHost(client, descriptor, true);
+          SiteData remoteData = vpnService.getHostNameResolver().getSecureHost(client, descriptor, true);
           if(DEBUG) Log.d(TAG, "Begin Handshake : " + remoteData.tcpAddress + " " + remoteData.hostName);
           SSLSocket ssl_client = SSLSocketBuilder.negotiateSSL(client, remoteData, false, vpnService.getSSlSocketFactoryFactory());
           SSLSession session = ssl_client.getSession();
