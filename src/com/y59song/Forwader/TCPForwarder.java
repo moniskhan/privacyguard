@@ -37,23 +37,20 @@ import java.net.UnknownHostException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
-import java.util.ArrayDeque;
 
 /**
  * Created by frank on 2014-03-27.
  */
-public class TCPForwarder extends AbsForwarder implements Runnable, ICommunication {
+public class TCPForwarder extends AbsForwarder implements ICommunication {
   private final String TAG = "TCPForwarder";
   private final boolean DEBUG = false;
   protected Socket socket;
   private SocketChannel socketChannel;
   private TCPForwarderWorker receiver;
   private TCPConnectionInfo conn_info;
-  private ArrayDeque<IPDatagram> packets;
-  private int lastLen = 0;
 
   public enum Status {
-    DATA, LISTEN, SYN_ACK_SENT, HALF_CLOSE_BY_CLIENT, HALF_CLOSE_BY_SERVER, CLOSED;
+    DATA, LISTEN, SYN_ACK_SENT, HALF_CLOSE_BY_CLIENT, HALF_CLOSE_BY_SERVER, CLOSED
   }
 
   protected Status status;
@@ -61,7 +58,6 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
   public TCPForwarder(MyVpnService vpnService) {
     super(vpnService);
     status = Status.LISTEN;
-    packets = new ArrayDeque<IPDatagram>();
   }
 
   /*
@@ -73,81 +69,66 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
    * step 6 : combine the tcp datagram and the ip datagram, update the ip header
    */
 
-  public void forwardRequest(IPDatagram ipDatagram) {
-    handle_packet(ipDatagram);
-    /*
-    synchronized (packets) {
-      packets.addLast(ipDatagram);
-      packets.notify();
+  private boolean handle_LISTEN(IPDatagram ipDatagram, byte flag, int len) {
+    if(flag != TCPHeader.SYN) {
+      close(true);
+      return false;
     }
-    */
+    conn_info.reset(ipDatagram);
+    conn_info.setup(this);
+    conn_info.increaseSeq(
+      forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.SYNACK), null))
+    );
+    status = Status.SYN_ACK_SENT;
+    return true;
   }
 
-  @Override
-  public void run() {
-    IPDatagram temp;
-    while(!closed) {
-      synchronized (packets) {
-        while ((temp = packets.pollFirst()) == null) {
-          try {
-            packets.wait();
-          } catch (InterruptedException e) {
-            e.printStackTrace();
-          }
-        }
-      }
-      handle_packet(temp);
+  private boolean handle_SYN_ACK_SENT(byte flag) {
+    if(flag != TCPHeader.ACK) {
+      close(true);
+      return false;
     }
+    status = Status.DATA;
+    return true;
   }
 
-  protected synchronized void handle_request (IPDatagram ipDatagram) {
-    if(conn_info == null) conn_info = new TCPConnectionInfo(ipDatagram);
-    switch(status) {
-      case LISTEN: conn_info.reset(ipDatagram);
-      case SYN_ACK_SENT: handle_handshake((TCPDatagram)ipDatagram.payLoad()); break;
-      case DATA : handle_data((TCPDatagram)ipDatagram.payLoad()); break;
-      case HALF_CLOSE_BY_CLIENT: close(); break;
-      default : break;
-    }
-  }
-
-  protected void handle_handshake(TCPDatagram tcpDatagram) {
-    byte flag = ((TCPHeader)tcpDatagram.header()).getFlag();
-    int len = tcpDatagram.virtualLength();
-    if((status == Status.LISTEN && flag != TCPHeader.SYN) ||
-       (status == Status.SYN_ACK_SENT && flag != TCPHeader.ACK)) {
-      lastLen = forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.RST), null));
-      close();
-    } else if(status == Status.LISTEN) {
-      conn_info.setup(this);
-      lastLen = forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.SYNACK), null));
-      status = Status.SYN_ACK_SENT;
-    } else {
-      conn_info.increaseSeq(1);
-      status = Status.DATA;
-    }
-  }
-
-  protected void handle_data(TCPDatagram tcpDatagram) {
-    byte flag = ((TCPHeader)tcpDatagram.header()).getFlag();
-    int len = tcpDatagram.virtualLength(), rlen = tcpDatagram.dataLength();
-    boolean changed = conn_info.setSeq(((TCPHeader) tcpDatagram.header()).getAck_num());
-    if (rlen != 0) {
-      send(tcpDatagram);
-      forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.ACK), null));
-    } else if(flag == TCPHeader.FINACK) {
-      forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.ACK), null));
-      forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.FINACK), null));
+  private boolean handle_DATA(IPDatagram ipDatagram, byte flag, int len, int rlen) {
+    assert((flag & TCPHeader.ACK) != 0);
+    if(rlen > 0) { // send data
+      send(ipDatagram.payLoad());
+      conn_info.increaseSeq(
+        forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.ACK), null))
+      );
+    } else if(flag == TCPHeader.FINACK) { // FIN
+      conn_info.increaseSeq(
+        forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.ACK), null))
+      );
+      conn_info.increaseSeq(
+        forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.FINACK), null))
+      );
       close(false);
-    } else if(flag == TCPHeader.RST) {
+    } else if((flag & TCPHeader.RST) != 0) { // RST
       close(false);
     }
+    return true;
+  }
 
-    if(changed) {
-      Log.d(TAG, "" + ((TCPHeader) tcpDatagram.header()).getAck_num());
-      receiver.interrupt();
-    }
+  private boolean handle_HALF_CLOSE_BY_CLIENT(byte flag) {
+    assert(flag == TCPHeader.ACK);
+    status = Status.CLOSED;
+    close(false);
+    return true;
+  }
 
+  private boolean handle_HALF_CLOSE_BY_SERVER(byte flag, int len) {
+    if(flag == TCPHeader.FINACK) {
+      conn_info.increaseSeq(
+        forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.ACK), null))
+      );
+      status = Status.CLOSED;
+      close(false);
+    } // ELSE ACK for the finack sent by the server
+    return true;
   }
 
   protected synchronized void handle_packet (IPDatagram ipDatagram) {
@@ -160,122 +141,32 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
       rlen = ipDatagram.payLoad().dataLength();
       if(conn_info == null) conn_info = new TCPConnectionInfo(ipDatagram);
     } else return;
-    if(DEBUG) Log.d(TAG, "" + status + "," + closed);
     switch(status) {
       case LISTEN:
-        if(flag != TCPHeader.SYN) {
-          close(true);
-          return;
-        }
-        conn_info.reset(ipDatagram);
-        conn_info.setup(this);
-        conn_info.increaseSeq(
-          forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.SYNACK), null))
-        );
-        status = Status.SYN_ACK_SENT;
-        break;
+        if(!handle_LISTEN(ipDatagram, flag, len)) return;
+        else break;
       case SYN_ACK_SENT:
-        if(flag != TCPHeader.ACK) {
-          close(true);
-          return;
-        }
-        status = Status.DATA;
-        break;
+        if(!handle_SYN_ACK_SENT(flag)) return;
+        else break;
       case DATA:
-        assert((flag & TCPHeader.ACK) != 0);
-        if(rlen > 0) { // send data
-          send(ipDatagram.payLoad());
-          conn_info.increaseSeq(
-            forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.ACK), null))
-          );
-        } else if(flag == TCPHeader.FINACK) { // FIN
-          conn_info.increaseSeq(
-            forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.ACK), null))
-          );
-          conn_info.increaseSeq(
-            forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.FINACK), null))
-          );
-          close(false);
-        } else if((flag & TCPHeader.RST) != 0) { // RST
-          close(false);
-        }
-        break;
+        if(!handle_DATA(ipDatagram, flag, len, rlen)) return;
+        else break;
       case HALF_CLOSE_BY_CLIENT:
-        assert(flag == TCPHeader.ACK);
-        status = Status.CLOSED;
-        close(false);
-        break;
+        if(!handle_HALF_CLOSE_BY_CLIENT(flag)) return;
+        else break;
       case HALF_CLOSE_BY_SERVER:
-        if(flag == TCPHeader.FINACK) {
-          conn_info.increaseSeq(
-            forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.ACK), null))
-          );
-          status = Status.CLOSED;
-          close(false);
-        } // ELSE ACK for the finack sent by the server
-        break;
+        if(!handle_HALF_CLOSE_BY_SERVER(flag, len)) return;
+        else break;
       case CLOSED:
-        status = Status.CLOSED;
+        //status = Status.CLOSED;
       default:
         break;
     }
   }
 
-  @Override
-  public synchronized void forwardResponse(byte[] response) {
-    if(conn_info == null) return;
-    conn_info.increaseSeq(
-      forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.DATA), response))
-    );
-  }
-
-  @Override
-  public void close() {
-    close(false);
-  }
-
-  @Override
-  public boolean isClosed() {
-    return closed;
-  }
-
-  @Override
-  public void send(IPPayLoad payLoad) {
-    if(isClosed()) {
-      status = Status.HALF_CLOSE_BY_SERVER;
-      conn_info.increaseSeq(
-        forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.FINACK), null))
-      );
-    }
-    receiver.send(payLoad.data());
-  }
-
-  @Override
-  public void open() {
-    if(!closed) return;
-    super.open();
-    status = Status.LISTEN;
-  }
-
-  public void close(boolean sendRST) {
-    closed = true;
-    if(sendRST && conn_info != null) forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.RST), null));
-    conn_info = null;
-    status = Status.CLOSED;
-    if(socketChannel != null) {
-      try {
-        socketChannel.socket().close();
-        socketChannel.close();
-        socketChannel = null;
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
-    }
-    if(receiver != null && receiver.isAlive()) receiver.close();
-    vpnService.getForwarderPools().release(this);
-    if(DEBUG) Log.d(TAG, "Released");
-  }
-
+  /*
+   *  methods for AbsForwarder
+   */
   @Override
   public void setup(InetAddress srcAddress, int src_port, InetAddress dstAddress, int dst_port) {
     try {
@@ -298,6 +189,69 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
       }
       e.printStackTrace();
     }
+  }
+
+  @Override
+  public void open() {
+    if(!closed) return;
+    super.open();
+    status = Status.LISTEN;
+  }
+
+  @Override
+  public void close() {
+    close(false);
+  }
+
+  @Override
+  public boolean isClosed() {
+    return closed;
+  }
+
+  @Override
+  public void forwardRequest(IPDatagram ipDatagram) {
+    handle_packet(ipDatagram);
+  }
+
+  @Override
+  public synchronized void forwardResponse(byte[] response) {
+    if(conn_info == null) return;
+    conn_info.increaseSeq(
+      forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.DATA), response))
+    );
+  }
+
+  /*
+   * Methods for ICommunication
+   */
+  @Override
+  public void send(IPPayLoad payLoad) {
+    if(isClosed()) {
+      status = Status.HALF_CLOSE_BY_SERVER;
+      conn_info.increaseSeq(
+        forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.FINACK), null))
+      );
+    }
+    receiver.send(payLoad.data());
+  }
+
+  private void close(boolean sendRST) {
+    closed = true;
+    if(sendRST && conn_info != null) forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.RST), null));
+    conn_info = null;
+    status = Status.CLOSED;
+    if(socketChannel != null) {
+      try {
+        socketChannel.socket().close();
+        socketChannel.close();
+        socketChannel = null;
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    }
+    if(receiver != null && receiver.isAlive()) receiver.close();
+    vpnService.getForwarderPools().release(this);
+    if(DEBUG) Log.d(TAG, "Released");
   }
 
   public String debugInfo() {

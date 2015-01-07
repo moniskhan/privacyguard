@@ -42,6 +42,5 @@ public class ConnectionInfo {
 
   public void setup(AbsForwarder forwarder) {
     forwarder.setup(clientAddress, clientPort, serverAddress, serverPort);
-    //forwarder.setup(serverAddress, serverPort);
   }
 }

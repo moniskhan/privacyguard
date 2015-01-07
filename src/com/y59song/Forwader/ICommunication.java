@@ -27,7 +27,5 @@ import java.net.InetAddress;
  * Created by frank on 2014-03-27.
  */
 public interface ICommunication {
-
   public void send(IPPayLoad payload);
-  public void close();
 }
