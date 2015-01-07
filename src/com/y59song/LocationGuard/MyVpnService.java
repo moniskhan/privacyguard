@@ -36,13 +36,12 @@ import com.y59song.Plugin.IPlugin;
 import com.y59song.Plugin.LocationDetection;
 import com.y59song.Plugin.PhoneStateDetection;
 import com.y59song.Utilities.Certificate.CertificateManager;
-import com.y59song.Utilities.MyClientResolver;
-import com.y59song.Utilities.MyNetworkHostNameResolver;
+import com.y59song.Utilities.Resolver.MyClientResolver;
+import com.y59song.Utilities.Resolver.MyNetworkHostNameResolver;
 import org.sandrop.webscarab.plugin.proxy.SSLSocketFactoryFactory;
 
 import javax.security.cert.CertificateEncodingException;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 
 
@@ -87,6 +86,20 @@ public class MyVpnService extends VpnService implements Runnable {
     return 0;
   }
 
+  @Override
+  public void onDestroy() {
+    super.onDestroy();
+    if(mInterface == null) return;
+    try {
+      readThread.interrupt();
+      writeThread.interrupt();
+      localServer.interrupt();
+      mInterface.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
  @Override
   public void run() {
     installCertificate();
@@ -126,7 +139,6 @@ public class MyVpnService extends VpnService implements Runnable {
     resolver = new MyNetworkHostNameResolver(this);
     clientResolver = new MyClientResolver(this);
 
-
     localServer = new LocalServer(this);
     localServer.start();
     readThread = new TunReadThread(mInterface.getFileDescriptor(), this);
@@ -136,6 +148,7 @@ public class MyVpnService extends VpnService implements Runnable {
   }
 
   private void wait_to_close() {
+    // wait until all threads stop
     try {
       while(writeThread.isAlive())
         writeThread.join();
@@ -146,20 +159,6 @@ public class MyVpnService extends VpnService implements Runnable {
       while(localServer.isAlive())
         localServer.join();
     } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
-  }
-
-  @Override
-  public void onDestroy() {
-    super.onDestroy();
-    if(mInterface == null) return;
-    try {
-      readThread.interrupt();
-      writeThread.interrupt();
-      localServer.interrupt();
-      mInterface.close();
-    } catch (IOException e) {
       e.printStackTrace();
     }
   }

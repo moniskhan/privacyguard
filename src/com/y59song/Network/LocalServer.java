@@ -3,7 +3,7 @@ package com.y59song.Network;
 import android.util.Log;
 import com.y59song.Forwader.MySocketForwarder;
 import com.y59song.LocationGuard.MyVpnService;
-import com.y59song.Utilities.SSLSocketBuilder;
+import com.y59song.Network.SSL.SSLSocketBuilder;
 import org.sandrop.webscarab.model.ConnectionDescriptor;
 import org.sandrop.webscarab.plugin.proxy.SiteData;
 

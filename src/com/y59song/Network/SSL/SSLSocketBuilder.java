@@ -1,4 +1,4 @@
-package com.y59song.Utilities;
+package com.y59song.Network.SSL;
 
 import android.util.Log;
 import org.sandrop.webscarab.plugin.proxy.SSLSocketFactoryFactory;

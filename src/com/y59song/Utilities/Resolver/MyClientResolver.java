@@ -1,4 +1,4 @@
-package com.y59song.Utilities;
+package com.y59song.Utilities.Resolver;
 
 import android.content.Context;
 import android.content.pm.PackageInfo;
