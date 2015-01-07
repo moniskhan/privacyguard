@@ -29,22 +29,33 @@ import java.net.InetAddress;
 /**
  * Created by frank on 2014-03-29.
  */
-public abstract class AbsForwarder {//} extends Thread {
-  protected InetAddress dstAddress;
-  protected int dstPort;
+
+public abstract class AbsForwarder {
   protected MyVpnService vpnService;
-  protected boolean closed;
+  protected boolean closed = true;
   public AbsForwarder(MyVpnService vpnService) {
     this.vpnService = vpnService;
   }
 
-  protected abstract void forward (IPDatagram ip);
+  public abstract void setup(InetAddress srcAddress, int srcPort, InetAddress dstAddress, int dstPort);
 
-  protected abstract void receive (byte[] response);
-
-  public void request(IPDatagram ip) {
-    forward(ip);
+  public void open() {
+    closed = false;
   }
+
+  public void close() {
+    closed = true;
+  }
+
+  public boolean isClosed() {
+    return closed;
+  }
+
+
+
+  public abstract void forwardRequest(IPDatagram ip);
+
+  public abstract void forwardResponse(byte[] response);
 
   public int forwardResponse(IPHeader ipHeader, IPPayLoad datagram) {
     if(ipHeader == null || datagram == null) return 0;
@@ -54,13 +65,4 @@ public abstract class AbsForwarder {//} extends Thread {
     return datagram.virtualLength();
   }
 
-  public abstract void close();
-
-  public void open() {
-    closed = false;
-  }
-
-  public boolean isClosed() {
-    return closed;
-  }
 }

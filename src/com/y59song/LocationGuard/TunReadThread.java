@@ -21,7 +21,6 @@ package com.y59song.LocationGuard;
 
 import com.y59song.Forwader.ForwarderPools;
 import com.y59song.Network.IP.IPDatagram;
-import com.y59song.Utilities.MyLogger;
 
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
@@ -91,7 +90,7 @@ public class TunReadThread extends Thread {
           }
         }
         int port = temp.payLoad().getSrcPort();
-        forwarderPools.get(port, temp.header().protocol()).request(temp);
+        forwarderPools.get(port, temp.header().protocol()).forwardRequest(temp);
       }
     }
   }

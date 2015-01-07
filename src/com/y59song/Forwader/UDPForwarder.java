@@ -25,6 +25,7 @@ import com.y59song.Network.IP.IPHeader;
 import com.y59song.Network.IP.IPPayLoad;
 import com.y59song.Network.UDP.UDPDatagram;
 import com.y59song.Network.UDP.UDPHeader;
+import com.y59song.Utilities.MyLogger;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -38,19 +39,21 @@ import java.util.Arrays;
  * Created by frank on 2014-03-29.
  */
 public class UDPForwarder extends AbsForwarder implements ICommunication {
-  private static final String TAG = "UDPForwarder";
+  private InetAddress dstAddress;
+  private int dstPort;
   private DatagramSocket socket;
   private ByteBuffer packet;
   private DatagramPacket response;
+  private final int Limit = 32767;
 
   public UDPForwarder(MyVpnService vpnService) {
     super(vpnService);
-    packet = ByteBuffer.allocate(32767);
-    response = new DatagramPacket(packet.array(), 32767);
+    packet = ByteBuffer.allocate(Limit);
+    response = new DatagramPacket(packet.array(), Limit);
   }
 
   @Override
-  protected void forward(IPDatagram ipDatagram) {
+  public void forwardRequest(IPDatagram ipDatagram) {
     if(closed) return;
     UDPDatagram udpDatagram = (UDPDatagram)ipDatagram.payLoad();
     setup(null, -1, ipDatagram.header().getDstAddress(), ipDatagram.payLoad().getDstPort());
@@ -66,7 +69,7 @@ public class UDPForwarder extends AbsForwarder implements ICommunication {
   }
 
   @Override
-  protected void receive(byte[] response) {
+  public void forwardResponse(byte[] response) {
   }
 
   @Override
@@ -97,6 +100,7 @@ public class UDPForwarder extends AbsForwarder implements ICommunication {
       socket.receive(response);
     } catch (SocketTimeoutException e) {
       close();
+      MyLogger.debugInfo("UDPForwarder", "Socket Timeout Exception");
       return null;
     } catch (IOException e) {
       e.printStackTrace();

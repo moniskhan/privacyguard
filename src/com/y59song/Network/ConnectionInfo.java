@@ -1,5 +1,6 @@
 package com.y59song.Network;
 
+import com.y59song.Forwader.AbsForwarder;
 import com.y59song.Forwader.ICommunication;
 import com.y59song.Network.IP.IPDatagram;
 import com.y59song.Network.IP.IPHeader;
@@ -39,7 +40,7 @@ public class ConnectionInfo {
     this.responseTransHeader = ipDatagram.payLoad().header().reverse();
   }
 
-  public void setup(ICommunication forwarder) {
+  public void setup(AbsForwarder forwarder) {
     forwarder.setup(clientAddress, clientPort, serverAddress, serverPort);
     //forwarder.setup(serverAddress, serverPort);
   }

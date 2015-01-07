@@ -73,7 +73,7 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
    * step 6 : combine the tcp datagram and the ip datagram, update the ip header
    */
 
-  protected void forward (IPDatagram ipDatagram) {
+  public void forwardRequest(IPDatagram ipDatagram) {
     handle_packet(ipDatagram);
     /*
     synchronized (packets) {
@@ -222,7 +222,7 @@ public class TCPForwarder extends AbsForwarder implements Runnable, ICommunicati
   }
 
   @Override
-  public synchronized void receive (byte[] response) {
+  public synchronized void forwardResponse(byte[] response) {
     if(conn_info == null) return;
     conn_info.increaseSeq(
       forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.DATA), response))

@@ -106,7 +106,7 @@ public class TCPForwarderWorker extends Thread {
             msg.flip();
             byte[] temp = new byte[length];
             msg.get(temp);
-            forwarder.receive(temp);
+            forwarder.forwardResponse(temp);
           } catch (IOException e) {
             Log.d(TAG, socketChannel.socket().getLocalPort() + " " + socketChannel.socket().getPort());
             e.printStackTrace();
