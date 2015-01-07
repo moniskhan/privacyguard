@@ -44,7 +44,6 @@ public class LocalServer extends Thread {
   private void listen() throws IOException {
     serverSocketChannel = ServerSocketChannel.open();
     serverSocketChannel.socket().setReuseAddress(true);
-    //serverSocketChannel.socket().bind(new InetSocketAddress(port));
     serverSocketChannel.socket().bind(null);
     port = serverSocketChannel.socket().getLocalPort();
   }

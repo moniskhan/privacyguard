@@ -2,8 +2,14 @@ package com.y59song.Forwader.Receiver;
 
 import android.util.Log;
 import com.y59song.Forwader.TCPForwarder;
+import com.y59song.Network.LocalServer;
+import com.y59song.Utilities.MyLogger;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -20,15 +26,29 @@ public class TCPForwarderWorker extends Thread {
   private Selector selector;
   private TCPForwarder forwarder;
   private final int limit = 2048;
-  private final boolean DEBUG = false;
   private ByteBuffer msg = ByteBuffer.allocate(limit);
   private ArrayDeque<byte[]> requests = new ArrayDeque<byte[]>();
   private Sender sender;
 
-  public TCPForwarderWorker(SocketChannel socketChannel, TCPForwarder forwarder, Selector selector) {
-    this.socketChannel = socketChannel;
+  public TCPForwarderWorker(InetAddress srcAddress, int src_port, InetAddress dstAddress, int dst_port, TCPForwarder forwarder) {
     this.forwarder = forwarder;
-    this.selector = selector;
+    try {
+      if(socketChannel == null) socketChannel = SocketChannel.open();
+      Socket socket = socketChannel.socket();
+      socket.setReuseAddress(true);
+      socket.bind(new InetSocketAddress(InetAddress.getLocalHost(), src_port));
+      socketChannel.connect(new InetSocketAddress(LocalServer.port));
+      socketChannel.configureBlocking(false);
+      selector = Selector.open();
+      socketChannel.register(selector, SelectionKey.OP_READ);
+    } catch (IOException e) {
+      try {
+        Log.d(TAG, InetAddress.getLocalHost().getHostAddress() + ":" + src_port);
+      } catch (UnknownHostException e1) {
+        e1.printStackTrace();
+      }
+      e.printStackTrace();
+    }
   }
 
   public void send(byte[] request) {
@@ -39,68 +59,52 @@ public class TCPForwarderWorker extends Thread {
   }
 
   public class Sender extends Thread {
-    private final String TAG = "TCPSender";
     public void run() {
-      if(DEBUG) Log.d(TAG, "Sender start");
-      byte[] temp;
-      while (!forwarder.isClosed() && !socketChannel.isConnected()) {
-        try {
-          if(DEBUG) Log.d(TAG, "Gonna sleep");
+      try {
+        byte[] temp;
+        while(!isInterrupted() && !socketChannel.isConnected()) {
           Thread.sleep(100);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-          if(DEBUG) Log.d(TAG, "Sender stop");
-          return;
         }
-      }
-      while (!forwarder.isClosed() && socketChannel.isOpen()) {
-        synchronized (requests) {
-          while ((temp = requests.pollFirst()) == null) {
-            try {
+        while (!isInterrupted() && socketChannel.isOpen()) {
+          synchronized (requests) {
+            if ((temp = requests.pollFirst()) == null) {
               requests.wait();
-            } catch (InterruptedException e) {
-              if(DEBUG) Log.d(TAG, "Sender stop");
-              return;
+              continue;
             }
-            if (isInterrupted()) {
-              if(DEBUG) Log.d(TAG, "Sender stop");
-              return;
-            } else continue;
+          }
+          try {
+            socketChannel.write(ByteBuffer.wrap(temp));
+          } catch (IOException e) {
+            e.printStackTrace();
           }
         }
-        try {
-          socketChannel.write(ByteBuffer.wrap(temp));
-        } catch (Exception e) {
-          break;
-        }
+      } catch (InterruptedException e) {
+        return;
       }
-      if(DEBUG) Log.d(TAG, "Sender stop");
     }
   }
 
   @Override
   public void run() {
-    if(DEBUG) Log.d(TAG, "Receiver start");
     sender = new Sender();
     sender.start();
-    while(!forwarder.isClosed() && selector.isOpen()) {
+    while(!isInterrupted() && selector.isOpen()) {
       try {
         selector.select(0);
       } catch (IOException e) {
         e.printStackTrace();
       }
       Iterator<SelectionKey> iterator = selector.selectedKeys().iterator();
-      if(DEBUG) Log.d(TAG, "selected");
-      while(iterator.hasNext() && !forwarder.isClosed()) {
+      while(!isInterrupted() && iterator.hasNext()) {
         SelectionKey key = iterator.next();
         iterator.remove();
         if(key.isValid() && key.isReadable()) {
           try {
             msg.clear();
             int length = socketChannel.read(msg);
-            if(DEBUG) Log.d(TAG, "selected read : " + length + " " + forwarder.debugInfo());
-            if(length <= 0) {
-              sender.interrupt();
+            if(length <= 0 || isInterrupted()) {
+              MyLogger.debugInfo("TCPForwarderWorker", "Length from socket channel is " + length);
+              close();
               return;
             }
             msg.flip();
@@ -114,16 +118,31 @@ public class TCPForwarderWorker extends Thread {
         }
       }
     }
+    close();
+  }
+
+  public void close() {
     try {
       selector.close();
     } catch (IOException e) {
       e.printStackTrace();
     }
-    if(DEBUG) Log.d(TAG, "Receiver stop");
-    sender.interrupt();
-  }
-
-  public void close() {
-    if(sender != null && sender.isAlive()) sender.interrupt();
+    try {
+      socketChannel.socket().close();
+      socketChannel.close();
+      socketChannel = null;
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    MyLogger.debugInfo(TAG, "Receiver stop");
+    if(sender != null && sender.isAlive()) {
+      try {
+        Thread.interrupted();
+        sender.interrupt();
+        sender.join();
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
   }
 }
