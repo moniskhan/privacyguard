@@ -36,7 +36,7 @@ public class MyNetworkHostNameResolver {
 
   public static String DEFAULT_SITE_NAME = "sandroproxy.untrusted";
   private static String TAG = MyNetworkHostNameResolver.class.getSimpleName();
-  private static boolean LOGD = true;
+  private static boolean LOGD = false;
 
   private native String getOriginalDest(Socket socket);
 
