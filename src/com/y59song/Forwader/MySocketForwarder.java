@@ -64,16 +64,16 @@ public class MySocketForwarder extends Thread {
       clientServer.start();
       serverClient.start();
 
-      if(DEBUG) Log.d(TAG, "Start forwarding");
+      MyLogger.debugInfo(TAG, "Start forwarding");
       while (clientServer.isAlive())
         clientServer.join();
       while (serverClient.isAlive())
         serverClient.join();
       clientSocket.close();
       serverSocket.close();
-      if(DEBUG) Log.d(TAG, "Stop forwarding");
+      MyLogger.debugInfo(TAG, "Stop forwarding");
     }else{
-      if (DEBUG) Log.d(TAG, "skipping socket forwarding because of invalid sockets");
+      MyLogger.debugInfo(TAG, "skipping socket forwarding because of invalid sockets");
       if (clientSocket != null && clientSocket.isConnected()){
         clientSocket.close();
       }
@@ -116,7 +116,7 @@ public class MySocketForwarder extends Thread {
         } else {
             for(IPlugin plugin : plugins) {
                 String ret = outgoing ? plugin.handleRequest(msg) : plugin.handleResponse(msg);
-                if(DEBUG) Log.i(TAG, "" + (outgoing) + " " + got + " " + msg);
+                MyLogger.debugInfo(TAG, "" + (outgoing) + " " + got + " " + msg);
                 if(ret != null && outgoing) {
                     if(appName == null) {
                         ConnectionDescriptor des = vpnService.getClientAppResolver().getClientDescriptorBySocket(inSocket);
@@ -132,21 +132,24 @@ public class MySocketForwarder extends Thread {
             }
             //buff = msg.getBytes();
             //got = buff.length;
-            if(PROTECT && outgoing) Log.i(TAG, new String(Arrays.copyOfRange(buff, 0, got)));
+            if(PROTECT && outgoing) MyLogger.debugInfo(TAG, new String(Arrays.copyOfRange(buff, 0, got)));
         }
         out.write(buff, 0, got);
         out.flush();
       }
-      if(DEBUG) Log.i(TAG, "" + got);
+      MyLogger.debugInfo(TAG, "SocketForwarder stop, got : " + got);
     } catch (Exception ignore) {
       ignore.printStackTrace();
-    } finally {
+      MyLogger.debugInfo(TAG, "outgoing : " + outgoing);
+    }
+    /*
+    finally {
       try {
-        in.close();
-        out.close();
-      } catch (IOException ignore) {
-        ignore.printStackTrace();
+        this.inSocket.close();
+      } catch (IOException e) {
+        e.printStackTrace();
       }
     }
+    */
   }
 }

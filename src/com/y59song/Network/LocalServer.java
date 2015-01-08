@@ -4,6 +4,7 @@ import android.util.Log;
 import com.y59song.Forwader.MySocketForwarder;
 import com.y59song.LocationGuard.MyVpnService;
 import com.y59song.Network.SSL.SSLSocketBuilder;
+import com.y59song.Utilities.MyLogger;
 import org.sandrop.webscarab.model.ConnectionDescriptor;
 import org.sandrop.webscarab.plugin.proxy.SiteData;
 
@@ -64,17 +65,23 @@ public class LocalServer extends Thread {
         targetChannel.connect(new InetSocketAddress(descriptor.getRemoteAddress(), descriptor.getRemotePort()));
         if(descriptor != null && descriptor.getRemotePort() == SSLPort && !sslPinning.contains(descriptor.getRemoteAddress())) {
           SiteData remoteData = vpnService.getHostNameResolver().getSecureHost(client, descriptor, true);
-          if(DEBUG) Log.d(TAG, "Begin Handshake : " + remoteData.tcpAddress + " " + remoteData.hostName);
+          MyLogger.debugInfo(TAG, "Begin Handshake : " + remoteData.tcpAddress + " " + remoteData.name);
           SSLSocket ssl_client = SSLSocketBuilder.negotiateSSL(client, remoteData, false, vpnService.getSSlSocketFactoryFactory());
           SSLSession session = ssl_client.getSession();
-          if(DEBUG) Log.d(TAG, "After Handshake : " + session.isValid());
+          MyLogger.debugInfo(TAG, "After Handshake : " + remoteData.tcpAddress + " " + remoteData.name + " " + session + " is valid : " + session.isValid());
           if(session.isValid()) {
             client = ssl_client;
             target = ((SSLSocketFactory) SSLSocketFactory.getDefault()).createSocket(target, descriptor.getRemoteAddress(), descriptor.getRemotePort(), true);
+            SSLSession tmp_session = ((SSLSocket) target).getSession();
+            MyLogger.debugInfo(TAG, "Remote Handshake : " + tmp_session + " is valid : " + tmp_session.isValid());
           } else {
             sslPinning.add(descriptor.getRemoteAddress());
             ssl_client.close();
-            assert(!client.isClosed());
+            /*
+            client.close();
+            target.close();
+            return;
+            */
           }
         }
         MySocketForwarder.connect(client, target, vpnService);
@@ -88,12 +95,12 @@ public class LocalServer extends Thread {
   public void run() {
     while(!isInterrupted()) {
       try {
-        if(DEBUG) Log.d(TAG, "Accepting");
+        MyLogger.debugInfo(TAG, "Accepting");
         SocketChannel socketChannel = serverSocketChannel.accept();
         Socket socket = socketChannel.socket();
-        if(DEBUG) Log.d(TAG, "Receiving : " + socket.getInetAddress().getHostAddress());
-        new Thread(new ForwarderHandler(socketChannel.socket())).start();
-        if(DEBUG) Log.d(TAG, "Not blocked");
+        MyLogger.debugInfo(TAG, "Receiving : " + socket.getInetAddress().getHostAddress() + ":" + socket.getPort());
+        new Thread(new ForwarderHandler(socket)).start();
+        MyLogger.debugInfo(TAG, "Not blocked");
       } catch (Exception e) {
         e.printStackTrace();
       }

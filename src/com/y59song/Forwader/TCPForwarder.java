@@ -27,6 +27,7 @@ import com.y59song.Network.IP.IPPayLoad;
 import com.y59song.Network.TCP.TCPDatagram;
 import com.y59song.Network.TCP.TCPHeader;
 import com.y59song.Network.TCPConnectionInfo;
+import com.y59song.Utilities.MyLogger;
 
 import java.net.InetAddress;
 /**
@@ -63,8 +64,10 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
       close(true);
       return false;
     }
+    MyLogger.debugInfo(TAG, "Listen " + ipDatagram.payLoad().header().getSrcPort() + " : " + ipDatagram.payLoad().header().getDstPort());
     conn_info.reset(ipDatagram);
     conn_info.setup(this);
+    if(!receiver.isValid()) return false;
     conn_info.increaseSeq(
       forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.SYNACK), null))
     );
@@ -75,6 +78,7 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
   private boolean handle_SYN_ACK_SENT(byte flag) {
     if(flag != TCPHeader.ACK) {
       close(true);
+      MyLogger.debugInfo(TAG, "SYN_ACK_SENT close");
       return false;
     }
     status = Status.DATA;
@@ -95,9 +99,11 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
       conn_info.increaseSeq(
         forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.FINACK), null))
       );
+      MyLogger.debugInfo(TAG, "DATA FIN close");
       close(false);
     } else if((flag & TCPHeader.RST) != 0) { // RST
       close(false);
+      MyLogger.debugInfo(TAG, "DATA RST close");
     }
     return true;
   }
@@ -105,6 +111,7 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
   private boolean handle_HALF_CLOSE_BY_CLIENT(byte flag) {
     assert(flag == TCPHeader.ACK);
     status = Status.CLOSED;
+    MyLogger.debugInfo(TAG, "HALF_CLOSE_BY_CLIENT close");
     close(false);
     return true;
   }
@@ -115,6 +122,7 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
         forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(len, TCPHeader.ACK), null))
       );
       status = Status.CLOSED;
+      MyLogger.debugInfo(TAG, "HALF_CLOSE_BY_SERVER close");
       close(false);
     } // ELSE ACK for the finack sent by the server
     return true;
@@ -157,10 +165,13 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
    *  methods for AbsForwarder
    */
   @Override
-  public void setup(InetAddress srcAddress, int src_port, InetAddress dstAddress, int dst_port) {
-    vpnService.getClientAppResolver().addPort(src_port, dstAddress.getHostAddress(), dst_port);
+  public boolean setup(InetAddress srcAddress, int src_port, InetAddress dstAddress, int dst_port) {
+    vpnService.getClientAppResolver().setLocalPortToRemoteMapping(src_port, dstAddress.getHostAddress(), dst_port);
     receiver = new TCPForwarderWorker(srcAddress, src_port, dstAddress, dst_port, this);
-    receiver.start();
+    if(!receiver.isValid()) {
+      return false;
+    } else receiver.start();
+    return true;
   }
 
   @Override
@@ -208,8 +219,7 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
 
   private void close(boolean sendRST) {
     closed = true;
-    if(sendRST && conn_info != null) forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.RST), null));
-    conn_info = null;
+    if(sendRST) forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.RST), null));
     status = Status.CLOSED;
     try {
       if(receiver != null) {

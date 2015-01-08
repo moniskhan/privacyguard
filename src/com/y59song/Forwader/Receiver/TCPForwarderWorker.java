@@ -2,14 +2,12 @@ package com.y59song.Forwader.Receiver;
 
 import android.util.Log;
 import com.y59song.Forwader.TCPForwarder;
+import com.y59song.LocationGuard.MyVpnService;
 import com.y59song.Network.LocalServer;
 import com.y59song.Utilities.MyLogger;
 
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.net.UnknownHostException;
+import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -33,22 +31,28 @@ public class TCPForwarderWorker extends Thread {
   public TCPForwarderWorker(InetAddress srcAddress, int src_port, InetAddress dstAddress, int dst_port, TCPForwarder forwarder) {
     this.forwarder = forwarder;
     try {
-      if(socketChannel == null) socketChannel = SocketChannel.open();
+      socketChannel = SocketChannel.open();
       Socket socket = socketChannel.socket();
       socket.setReuseAddress(true);
+      MyLogger.debugInfo(TAG, srcAddress.getHostAddress() + ":" + src_port + " " + LocalServer.port);
       socket.bind(new InetSocketAddress(InetAddress.getLocalHost(), src_port));
-      socketChannel.connect(new InetSocketAddress(LocalServer.port));
+      try {
+        socketChannel.connect(new InetSocketAddress(LocalServer.port));
+      } catch (ConnectException e) {
+        MyLogger.debugInfo(TAG, "Connect exception !!! : " + srcAddress.getHostAddress() + ":" + src_port + " " + LocalServer.port);
+        e.printStackTrace();
+        return;
+      }
       socketChannel.configureBlocking(false);
       selector = Selector.open();
       socketChannel.register(selector, SelectionKey.OP_READ);
     } catch (IOException e) {
-      try {
-        Log.d(TAG, InetAddress.getLocalHost().getHostAddress() + ":" + src_port);
-      } catch (UnknownHostException e1) {
-        e1.printStackTrace();
-      }
       e.printStackTrace();
     }
+  }
+
+  public boolean isValid() {
+    return selector != null;
   }
 
   public void send(byte[] request) {
@@ -65,7 +69,7 @@ public class TCPForwarderWorker extends Thread {
         while(!isInterrupted() && !socketChannel.isConnected()) {
           Thread.sleep(100);
         }
-        while (!isInterrupted() && socketChannel.isOpen()) {
+        while (!isInterrupted() && !socketChannel.socket().isClosed()) {
           synchronized (requests) {
             if ((temp = requests.pollFirst()) == null) {
               requests.wait();
@@ -103,7 +107,7 @@ public class TCPForwarderWorker extends Thread {
             msg.clear();
             int length = socketChannel.read(msg);
             if(length <= 0 || isInterrupted()) {
-              MyLogger.debugInfo("TCPForwarderWorker", "Length from socket channel is " + length);
+              MyLogger.debugInfo("TCPForwarderWorker", "Length from socket channel is " + length + " : " + socketChannel.socket().getPort());
               close();
               return;
             }
@@ -112,7 +116,6 @@ public class TCPForwarderWorker extends Thread {
             msg.get(temp);
             forwarder.forwardResponse(temp);
           } catch (IOException e) {
-            Log.d(TAG, socketChannel.socket().getLocalPort() + " " + socketChannel.socket().getPort());
             e.printStackTrace();
           }
         }
@@ -122,24 +125,28 @@ public class TCPForwarderWorker extends Thread {
   }
 
   public void close() {
+    MyLogger.debugInfo(TAG, "Receiver stop " + socketChannel.socket().getLocalPort());
     try {
-      selector.close();
+      if(selector != null) selector.close();
     } catch (IOException e) {
       e.printStackTrace();
     }
     try {
-      socketChannel.socket().close();
-      socketChannel.close();
-      socketChannel = null;
+      if(socketChannel.isConnected()) {
+        socketChannel.socket().close();
+        socketChannel.close();
+        socketChannel = null;
+      }
     } catch (IOException e) {
       e.printStackTrace();
     }
-    MyLogger.debugInfo(TAG, "Receiver stop");
     if(sender != null && sender.isAlive()) {
       try {
         Thread.interrupted();
-        sender.interrupt();
-        sender.join();
+        if(sender.isAlive()) {
+          sender.interrupt();
+          sender.join();
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }

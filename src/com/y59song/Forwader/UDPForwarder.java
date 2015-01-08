@@ -73,7 +73,7 @@ public class UDPForwarder extends AbsForwarder implements ICommunication {
   }
 
   @Override
-  public void setup(InetAddress srcAddress, int srcPort, InetAddress dstAddress, int dstPort) {
+  public boolean setup(InetAddress srcAddress, int srcPort, InetAddress dstAddress, int dstPort) {
     try {
       socket = new DatagramSocket();
     } catch (IOException e) {
@@ -82,6 +82,7 @@ public class UDPForwarder extends AbsForwarder implements ICommunication {
     vpnService.protect(socket);
     this.dstAddress = dstAddress;
     this.dstPort = dstPort;
+    return true;
   }
 
   @Override

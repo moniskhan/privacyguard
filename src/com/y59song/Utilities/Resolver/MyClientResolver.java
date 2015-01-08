@@ -26,6 +26,7 @@ public class MyClientResolver implements IClientResolver {
   private static String TAG = MyClientResolver.class.getSimpleName();
   private HashMap<Integer, String> portToRemoteAddress = new HashMap<Integer, String>();
   private HashMap<Integer, Integer> portToRemotePort = new HashMap<Integer, Integer>();
+  private HashMap<Integer, Integer> forwardPortToAppPort = new HashMap<Integer, Integer>();
 
   private PackageManager packageManager;
 
@@ -194,7 +195,11 @@ public class MyClientResolver implements IClientResolver {
     return new ConnectionDescriptor(null, null, null, NetworkInfo.TCP6_TYPE, 0, "10.8.0.1", port, remoteAddress, remotePort, null, -1);
   }
 
-  public void addPort(int port, String remoteAddress, int remotePort) {
+  public ConnectionDescriptor getClientDescriptorByForwardPort(int forwardPort) {
+    return getClientDescriptorByPort(forwardPortToAppPort.get(forwardPort));
+  }
+
+  public void setLocalPortToRemoteMapping(int port, String remoteAddress, int remotePort) {
     synchronized (portToRemoteAddress) {
       portToRemoteAddress.put(port, remoteAddress);
     }
@@ -203,12 +208,24 @@ public class MyClientResolver implements IClientResolver {
     }
   }
 
-  public void deletePort(int port) {
+  public void resetLocalPortToRemoteMapping(int port) {
     synchronized (portToRemoteAddress) {
       portToRemoteAddress.remove(port);
     }
     synchronized (portToRemotePort) {
       portToRemotePort.remove(port);
+    }
+  }
+
+  public void setForwardPortMapping(int forwardPort, int appPort) {
+    synchronized (forwardPortToAppPort) {
+      forwardPortToAppPort.put(forwardPort, appPort);
+    }
+  }
+
+  public void resetForwardPortMapping(int forwardPort) {
+    synchronized (forwardPortToAppPort) {
+      forwardPortToAppPort.remove(forwardPort);
     }
   }
 }

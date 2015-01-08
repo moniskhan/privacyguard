@@ -36,7 +36,7 @@ public class MyNetworkHostNameResolver {
 
   public static String DEFAULT_SITE_NAME = "sandroproxy.untrusted";
   private static String TAG = MyNetworkHostNameResolver.class.getSimpleName();
-  private static boolean LOGD = false;
+  private static boolean LOGD = true;
 
   private native String getOriginalDest(Socket socket);
 
@@ -192,7 +192,7 @@ public class MyNetworkHostNameResolver {
     getCertificateData(secureHostInit);
     if (siteData.size() == 0 || !siteData.containsKey(port)){
       try {
-        for(int i=0; i < 100; i++){
+        for(int i=0; i < 500; i++){
           Thread.sleep(100);
           if (siteData.containsKey(port)){
             secureHost = siteData.get(port);

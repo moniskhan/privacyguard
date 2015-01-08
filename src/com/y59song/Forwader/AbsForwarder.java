@@ -37,7 +37,7 @@ public abstract class AbsForwarder {
     this.vpnService = vpnService;
   }
 
-  public abstract void setup(InetAddress srcAddress, int srcPort, InetAddress dstAddress, int dstPort);
+  public abstract boolean setup(InetAddress srcAddress, int srcPort, InetAddress dstAddress, int dstPort);
 
   public void open() {
     closed = false;
