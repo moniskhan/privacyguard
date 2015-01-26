@@ -20,6 +20,7 @@
 package com.y59song.Forwader;
 
 import android.util.Log;
+import com.y59song.LocationGuard.LocationGuard;
 import com.y59song.LocationGuard.MyVpnService;
 import com.y59song.Plugin.IPlugin;
 import com.y59song.Plugin.LocationDetection;
@@ -103,36 +104,38 @@ public class MySocketForwarder extends Thread {
     try {
       byte[] buff = new byte[4096];
       int got;
-      while ((got = in.read(buff)) > -1){
+      while ((got = in.read(buff)) > -1) {
         String msg = new String(Arrays.copyOfRange(buff, 0, got));
-        if(EVALUATE) {
-            if(outgoing) {
-                if (appName == null) {
-                    ConnectionDescriptor des = vpnService.getClientAppResolver().getClientDescriptorBySocket(inSocket);
-                    if (des != null) appName = des.getNamespace();
-                }
-                MyLogger.log(appName, df.format(new Date()), "IP : " + destIP + "\nRequest : " + msg, ((LocationDetection) plugins.get(0)).getLocations());
-            }
-        } else {
-            for(IPlugin plugin : plugins) {
-                String ret = outgoing ? plugin.handleRequest(msg) : plugin.handleResponse(msg);
-                MyLogger.debugInfo(TAG, "" + (outgoing) + " " + got + " " + msg);
-                if(ret != null && outgoing) {
-                    if(appName == null) {
-                        ConnectionDescriptor des = vpnService.getClientAppResolver().getClientDescriptorBySocket(inSocket);
-                        if(des != null) {
-                            appName = des.getName();
-                            packageName = des.getNamespace();
-                        }
-                    }
-                    vpnService.notify(appName + " " + ret);
-                    MyLogger.log(packageName, df.format(new Date()), "IP : " + destIP + "\nRequest : " + msg + "\nType : "+ ret, ((LocationDetection) plugins.get(0)).getLocations());
-                }
-                msg = outgoing ? plugin.modifyRequest(msg) : plugin.modifyResponse(msg);
-            }
-            //buff = msg.getBytes();
-            //got = buff.length;
-            if(PROTECT && outgoing) MyLogger.debugInfo(TAG, new String(Arrays.copyOfRange(buff, 0, got)));
+        if(LocationGuard.doFilter) {
+          if (EVALUATE) {
+              if (outgoing) {
+                  if (appName == null) {
+                      ConnectionDescriptor des = vpnService.getClientAppResolver().getClientDescriptorBySocket(inSocket);
+                      if (des != null) appName = des.getNamespace();
+                  }
+                  MyLogger.log(appName, df.format(new Date()), "IP : " + destIP + "\nRequest : " + msg, ((LocationDetection) plugins.get(0)).getLocations());
+              }
+          } else {
+              for (IPlugin plugin : plugins) {
+                  String ret = outgoing ? plugin.handleRequest(msg) : plugin.handleResponse(msg);
+                  MyLogger.debugInfo(TAG, "" + (outgoing) + " " + got + " " + msg);
+                  if (ret != null && outgoing) {
+                      if (appName == null) {
+                          ConnectionDescriptor des = vpnService.getClientAppResolver().getClientDescriptorBySocket(inSocket);
+                          if (des != null) {
+                              appName = des.getName();
+                              packageName = des.getNamespace();
+                          }
+                      }
+                      vpnService.notify(appName + " " + ret);
+                      MyLogger.log(packageName, df.format(new Date()), "IP : " + destIP + "\nRequest : " + msg + "\nType : " + ret, ((LocationDetection) plugins.get(0)).getLocations());
+                  }
+                  msg = outgoing ? plugin.modifyRequest(msg) : plugin.modifyResponse(msg);
+              }
+              //buff = msg.getBytes();
+              //got = buff.length;
+              //if (PROTECT && outgoing) Log.i(TAG, new String(Arrays.copyOfRange(buff, 0, got)));
+          }
         }
         out.write(buff, 0, got);
         out.flush();

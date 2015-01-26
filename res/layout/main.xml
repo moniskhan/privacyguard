@@ -23,6 +23,14 @@
                   android:padding="3mm">
 
         <Button style="@style/item" android:id="@+id/connect" android:text="@string/connect"/>
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="analysis"/>
+        <ToggleButton
+                android:id="@+id/toggleButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textOn="On"
+                android:textOff="Off"
+                android:checked="true" />
 
     </LinearLayout>
 </ScrollView>

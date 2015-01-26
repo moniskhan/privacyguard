@@ -27,6 +27,8 @@ import android.net.VpnService;
 import android.os.Bundle;
 import android.security.KeyChain;
 import android.view.View;
+import android.widget.CompoundButton;
+import android.widget.ToggleButton;
 import com.y59song.Utilities.Certificate.CertificateManager;
 import com.y59song.Utilities.MyLogger;
 import org.sandrop.webscarab.plugin.proxy.SSLSocketFactoryFactory;
@@ -38,10 +40,11 @@ import java.io.FileInputStream;
 import java.security.KeyStoreException;
 import java.util.List;
 
-public class LocationGuard extends Activity implements View.OnClickListener {
+public class LocationGuard extends Activity implements View.OnClickListener, CompoundButton.OnCheckedChangeListener {
   private Intent intent;
 
   public static final boolean debug = false;
+  public static boolean doFilter = true;
 
   @Override
   public void onCreate(Bundle savedInstanceState) {
@@ -49,6 +52,7 @@ public class LocationGuard extends Activity implements View.OnClickListener {
     setContentView(R.layout.main);
     intent = new Intent(this, MyVpnService.class);
     findViewById(R.id.connect).setOnClickListener(this);
+    ((ToggleButton)findViewById(R.id.toggleButton)).setOnCheckedChangeListener(this);
     initialize();
     installCertificate();
   }
@@ -65,6 +69,7 @@ public class LocationGuard extends Activity implements View.OnClickListener {
     } catch (KeyStoreException e) {
       e.printStackTrace();
     }
+    CertificateManager.generateCACertificate(Dir, MyVpnService.CAName, MyVpnService.CertName, MyVpnService.KeyType, MyVpnService.Password.toCharArray());
     Intent intent = KeyChain.createInstallIntent();
     try {
       intent.putExtra(KeyChain.EXTRA_CERTIFICATE, CertificateManager.getCACertificate(Dir, MyVpnService.CAName).getEncoded());
@@ -109,4 +114,9 @@ public class LocationGuard extends Activity implements View.OnClickListener {
 
     return false;
   }
+
+    @Override
+    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+        LocationGuard.doFilter = isChecked;
+    }
 }

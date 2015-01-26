@@ -37,9 +37,16 @@ public class LocationDetection implements IPlugin {
 
     ArrayList<Location> locations = getLocations();
     for(Location loc : locations) {
-      double latD = Math.round(loc.getLatitude() * 100) / 100.0, lonD = Math.round(loc.getLongitude() * 100) / 100.0;
+      double latD = Math.round(loc.getLatitude() * 10) / 10.0, lonD = Math.round(loc.getLongitude() * 10) / 10.0;
       String latS = "" + latD, lonS = "" + lonD;
       MyLogger.debugInfo(TAG, "" + loc.getLatitude() + " " + loc.getLongitude() + " " + latS + " " + lonS);
+      ret |= requestStr.contains(latS) && requestStr.contains(lonS);
+      ret |= requestStr.contains(latS.replace(".", "")) && requestStr.contains(lonS.replace(".", ""));
+      latD = ((int)(loc.getLatitude() * 10)) / 10.0;
+      lonD = ((int)(loc.getLongitude() * 10)) / 10.0;
+      latS = "" + latD;
+      lonS = "" + lonD;
+      //Log.d(TAG, "" + loc.getLatitude() + " " + loc.getLongitude() + " " + latS + " " + lonS);
       ret |= requestStr.contains(latS) && requestStr.contains(lonS);
       ret |= requestStr.contains(latS.replace(".", "")) && requestStr.contains(lonS.replace(".", ""));
       MyLogger.debugInfo(TAG, latS + " " + lonS);
