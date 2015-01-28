@@ -62,9 +62,11 @@ public class LocationGuard extends Activity implements View.OnClickListener {
     try {
       if(CertificateManager.isCACertificateInstalled(Dir, MyVpnService.CAName, MyVpnService.KeyType, MyVpnService.Password))
         return;
+      else CertificateManager.generateCACertificate(Dir, MyVpnService.CAName, MyVpnService.CertName, MyVpnService.KeyType, MyVpnService.Password.toCharArray());
     } catch (KeyStoreException e) {
       e.printStackTrace();
     }
+
     Intent intent = KeyChain.createInstallIntent();
     try {
       intent.putExtra(KeyChain.EXTRA_CERTIFICATE, CertificateManager.getCACertificate(Dir, MyVpnService.CAName).getEncoded());
