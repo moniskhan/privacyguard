@@ -64,7 +64,7 @@ public class TunReadThread extends Thread {
           }
         } else {
           // length = 0 is possible, -1 means reach the end of the stream
-          Thread.sleep(100);
+          Thread.sleep(10);
         }
       }
     } catch (IOException e) {
