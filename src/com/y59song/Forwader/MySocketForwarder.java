@@ -113,12 +113,12 @@ public class MySocketForwarder extends Thread {
                       ConnectionDescriptor des = vpnService.getClientAppResolver().getClientDescriptorBySocket(inSocket);
                       if (des != null) appName = des.getNamespace();
                   }
-                  MyLogger.log(appName, df.format(new Date()), "IP : " + destIP + "\nRequest : " + msg, ((LocationDetection) plugins.get(0)).getLocations());
+                  //MyLogger.log(appName, df.format(new Date()), "IP : " + destIP + "\nRequest : " + msg, ((LocationDetection) plugins.get(0)).getLocations());
               }
           } else {
               for (IPlugin plugin : plugins) {
                   String ret = outgoing ? plugin.handleRequest(msg) : plugin.handleResponse(msg);
-                  MyLogger.debugInfo(TAG, "" + (outgoing) + " " + got + " " + msg);
+                  //MyLogger.debugInfo(TAG, "" + (outgoing) + " " + got + " " + msg);
                   if (ret != null && outgoing) {
                       if (appName == null) {
                           ConnectionDescriptor des = vpnService.getClientAppResolver().getClientDescriptorBySocket(inSocket);
@@ -128,7 +128,7 @@ public class MySocketForwarder extends Thread {
                           }
                       }
                       vpnService.notify(appName + " " + ret);
-                      MyLogger.log(packageName, df.format(new Date()), "IP : " + destIP + "\nRequest : " + msg + "\nType : " + ret, ((LocationDetection) plugins.get(0)).getLocations());
+                      //MyLogger.log(packageName, df.format(new Date()), "IP : " + destIP + "\nRequest : " + msg + "\nType : " + ret, ((LocationDetection) plugins.get(0)).getLocations());
                   }
                   msg = outgoing ? plugin.modifyRequest(msg) : plugin.modifyResponse(msg);
               }

@@ -27,6 +27,7 @@ public class TCPForwarderWorker extends Thread {
   private final int limit = 2048;
   private ByteBuffer msg = ByteBuffer.allocate(limit);
   private ArrayDeque<byte[]> requests = new ArrayDeque<byte[]>();
+  private Sender sender;
 
   public TCPForwarderWorker(InetAddress srcAddress, int src_port, InetAddress dstAddress, int dst_port, TCPForwarder forwarder) {
     this.forwarder = forwarder;
@@ -38,6 +39,8 @@ public class TCPForwarderWorker extends Thread {
       socket.bind(new InetSocketAddress(InetAddress.getLocalHost(), src_port));
       try {
         socketChannel.connect(new InetSocketAddress(LocalServer.port));
+        while(!socketChannel.finishConnect()) ;
+        MyLogger.debugInfo(TAG, "Connected");
       } catch (ConnectException e) {
         MyLogger.debugInfo(TAG, "Connect exception !!! : " + srcAddress.getHostAddress() + ":" + src_port + " " + LocalServer.port);
         e.printStackTrace();
@@ -45,7 +48,7 @@ public class TCPForwarderWorker extends Thread {
       }
       socketChannel.configureBlocking(false);
       selector = Selector.open();
-      socketChannel.register(selector, SelectionKey.OP_READ | SelectionKey.OP_WRITE);
+      socketChannel.register(selector, SelectionKey.OP_READ);
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -58,12 +61,43 @@ public class TCPForwarderWorker extends Thread {
   public void send(byte[] request) {
     synchronized (requests) {
       requests.addLast(request);
-      if(requests.size() == 1) requests.notify();
+      requests.notify();
+    }
+  }
+
+  public class Sender extends Thread {
+    public void run() {
+      try {
+        byte[] temp;
+        while(!isInterrupted() && !socketChannel.socket().isClosed()) {
+          synchronized(requests) {
+            if((temp = requests.pollFirst()) == null) {
+              requests.wait();
+              continue;
+            }
+          }
+          ByteBuffer tempBuf = ByteBuffer.wrap(temp);
+          while(true) {
+            socketChannel.write(tempBuf);
+            if(tempBuf.hasRemaining()) {
+              MyLogger.debugInfo(TAG, "looping");
+              Thread.sleep(10);
+            } else break;
+          }
+        }
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+        return;
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
     }
   }
 
   @Override
   public void run() {
+    sender = new Sender();
+    sender.start();
     while(!isInterrupted() && selector.isOpen()) {
       try {
         selector.select(0);
@@ -87,28 +121,39 @@ public class TCPForwarderWorker extends Thread {
             msg.flip();
             byte[] temp = new byte[length];
             msg.get(temp);
+            MyLogger.debugInfo("TCPForwarderWorker", "Reading");
             forwarder.forwardResponse(temp);
           } catch (IOException e) {
             e.printStackTrace();
           }
-        } else if(key.isWritable()) {
+        }
+
+        /*
+         else if(key.isWritable()) {
           byte[] temp;
           synchronized (requests) {
             if ((temp = requests.pollFirst()) == null) {
               try {
-                requests.wait(10);
+                MyLogger.debugInfo("TCPForwarderWorker", "Waiting");
+                requests.wait(100);
               } catch (InterruptedException e) {
                 e.printStackTrace();
+                close();
+                return;
               }
               continue;
             }
           }
           try {
+            MyLogger.debugInfo("TCPForwarderWorker", "Writing");
             socketChannel.write(ByteBuffer.wrap(temp));
           } catch (IOException e) {
             e.printStackTrace();
+            close();
+            return;
           }
         }
+         */
       }
     }
     close();
@@ -121,11 +166,13 @@ public class TCPForwarderWorker extends Thread {
     } catch (IOException e) {
       e.printStackTrace();
     }
+    if(sender != null && sender.isAlive()) {
+      sender.interrupt();
+    }
     try {
       if(socketChannel.isConnected()) {
         socketChannel.socket().close();
         socketChannel.close();
-        socketChannel = null;
       }
     } catch (IOException e) {
       e.printStackTrace();

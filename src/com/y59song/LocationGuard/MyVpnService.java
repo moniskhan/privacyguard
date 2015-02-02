@@ -112,7 +112,9 @@ public class MyVpnService extends VpnService implements Runnable {
     b.addAddress("10.8.0.1", 32);
     b.addDnsServer("8.8.8.8");
     b.addRoute("0.0.0.0", 0);
+    //b.addRoute("72.21.92.82", 32);
     //b.addRoute("129.97.171.63", 32);
+    //b.addRoute("74.125.226.97", 32);
     b.setMtu(1500);
     mInterface = b.establish();
     forwarderPools = new ForwarderPools(this);

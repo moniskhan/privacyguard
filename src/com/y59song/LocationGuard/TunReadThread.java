@@ -21,6 +21,8 @@ package com.y59song.LocationGuard;
 
 import com.y59song.Forwader.ForwarderPools;
 import com.y59song.Network.IP.IPDatagram;
+import com.y59song.Utilities.ByteOperations;
+import com.y59song.Utilities.MyLogger;
 
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
@@ -57,8 +59,10 @@ public class TunReadThread extends Thread {
         if (localInChannel.read(packet) > 0) {
           packet.flip();
           if ((ip = IPDatagram.create(packet)) != null) {
+            //MyLogger.debugInfo("TunReadThread", ByteOperations.byteArrayToString(ip.payLoad().data()));
             synchronized (readQueue) {
               readQueue.addLast(ip);
+              //MyLogger.debugInfo("TunReadThread", "NotifyDispatcher");
               readQueue.notify();
             }
           }
@@ -82,16 +86,21 @@ public class TunReadThread extends Thread {
         synchronized (readQueue) {
           if ((temp = readQueue.pollFirst()) == null) {
             try {
+              //MyLogger.debugInfo("TunReadThreadDispatcher", "waiting");
               readQueue.wait();
             } catch (InterruptedException e) {
+              //MyLogger.debugInfo("WTFWTF", "****************");
               e.printStackTrace();
             }
             continue;
           }
         }
         int port = temp.payLoad().getSrcPort();
+        MyLogger.debugInfo("TunReadThreadDispatcher", "START");
         forwarderPools.get(port, temp.header().protocol()).forwardRequest(temp);
+        MyLogger.debugInfo("TunReadThreadDispatcher", "FINISHED");
       }
+      MyLogger.debugInfo("WTFWTF", "****************");
     }
   }
 

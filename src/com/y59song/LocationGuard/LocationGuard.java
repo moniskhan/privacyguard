@@ -43,7 +43,7 @@ import java.util.List;
 public class LocationGuard extends Activity implements View.OnClickListener, CompoundButton.OnCheckedChangeListener {
   private Intent intent;
 
-  public static final boolean debug = false;
+  public static final boolean debug = true;
   public static boolean doFilter = true;
 
   @Override
