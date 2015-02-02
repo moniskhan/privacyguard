@@ -102,9 +102,16 @@ public class MySocketForwarder extends Thread {
 
   public void run() {
     try {
-      byte[] buff = new byte[4096];
+      byte[] buff = new byte[2048];
       int got;
       while ((got = in.read(buff)) > -1) {
+        if(outgoing) {
+          LocationGuard.socketForwarderWrite += got;
+          MyLogger.debugInfo(TAG, "Write " + LocationGuard.socketForwarderWrite + ":" + LocationGuard.tcpForwarderWorkerWrite);
+        } else {
+          LocationGuard.socketForwarderRead += got;
+          MyLogger.debugInfo(TAG, "Read " + LocationGuard.socketForwarderRead + ":" + LocationGuard.tcpForwarderWorkerRead);
+        }
         String msg = new String(Arrays.copyOfRange(buff, 0, got));
         if(LocationGuard.doFilter) {
           if (EVALUATE) {
@@ -118,7 +125,7 @@ public class MySocketForwarder extends Thread {
           } else {
               for (IPlugin plugin : plugins) {
                   String ret = outgoing ? plugin.handleRequest(msg) : plugin.handleResponse(msg);
-                  //MyLogger.debugInfo(TAG, "" + (outgoing) + " " + got + " " + msg);
+                  MyLogger.debugInfo(TAG, "" + (outgoing) + " " + got);
                   if (ret != null && outgoing) {
                       if (appName == null) {
                           ConnectionDescriptor des = vpnService.getClientAppResolver().getClientDescriptorBySocket(inSocket);
@@ -138,7 +145,7 @@ public class MySocketForwarder extends Thread {
           }
         }
         out.write(buff, 0, got);
-        out.flush();
+        //out.flush();
       }
       MyLogger.debugInfo(TAG, "SocketForwarder stop, got : " + got);
     } catch (Exception ignore) {

@@ -3,6 +3,7 @@ package com.y59song.Forwader.Receiver;
 import android.text.Selection;
 import android.util.Log;
 import com.y59song.Forwader.TCPForwarder;
+import com.y59song.LocationGuard.LocationGuard;
 import com.y59song.LocationGuard.MyVpnService;
 import com.y59song.Network.LocalServer;
 import com.y59song.Utilities.MyLogger;
@@ -20,7 +21,7 @@ import java.util.Iterator;
  * Created by y59song on 03/04/14.
  */
 public class TCPForwarderWorker extends Thread {
-  private final String TAG = "TCPReceiver";
+  private final String TAG = "TCPForwarderWorker";
   private SocketChannel socketChannel;
   private Selector selector;
   private TCPForwarder forwarder;
@@ -36,6 +37,7 @@ public class TCPForwarderWorker extends Thread {
       Socket socket = socketChannel.socket();
       socket.setReuseAddress(true);
       MyLogger.debugInfo(TAG, srcAddress.getHostAddress() + ":" + src_port + " " + LocalServer.port);
+      MyLogger.debugInfo(TAG, dstAddress.getHostAddress() + ":" + dst_port);
       socket.bind(new InetSocketAddress(InetAddress.getLocalHost(), src_port));
       try {
         socketChannel.connect(new InetSocketAddress(LocalServer.port));
@@ -71,14 +73,14 @@ public class TCPForwarderWorker extends Thread {
         byte[] temp;
         while(!isInterrupted() && !socketChannel.socket().isClosed()) {
           synchronized(requests) {
-            if((temp = requests.pollFirst()) == null) {
+            while((temp = requests.pollFirst()) == null) {
               requests.wait();
-              continue;
             }
           }
           ByteBuffer tempBuf = ByteBuffer.wrap(temp);
           while(true) {
-            socketChannel.write(tempBuf);
+            LocationGuard.tcpForwarderWorkerWrite += socketChannel.write(tempBuf);
+            MyLogger.debugInfo(TAG, "Write " + LocationGuard.tcpForwarderWorkerWrite);
             if(tempBuf.hasRemaining()) {
               MyLogger.debugInfo(TAG, "looping");
               Thread.sleep(10);
@@ -96,6 +98,7 @@ public class TCPForwarderWorker extends Thread {
 
   @Override
   public void run() {
+    int total = 0;
     sender = new Sender();
     sender.start();
     while(!isInterrupted() && selector.isOpen()) {
@@ -121,7 +124,8 @@ public class TCPForwarderWorker extends Thread {
             msg.flip();
             byte[] temp = new byte[length];
             msg.get(temp);
-            MyLogger.debugInfo("TCPForwarderWorker", "Reading");
+            LocationGuard.tcpForwarderWorkerRead += length;
+            MyLogger.debugInfo("TCPForwarderWorker", "Read " + LocationGuard.tcpForwarderWorkerRead + ":" + LocationGuard.socketForwarderRead);
             forwarder.forwardResponse(temp);
           } catch (IOException e) {
             e.printStackTrace();

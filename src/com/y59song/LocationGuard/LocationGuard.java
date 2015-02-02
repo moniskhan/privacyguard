@@ -46,6 +46,11 @@ public class LocationGuard extends Activity implements View.OnClickListener, Com
   public static final boolean debug = true;
   public static boolean doFilter = true;
 
+  public static int tcpForwarderWorkerRead = 0;
+  public static int tcpForwarderWorkerWrite = 0;
+  public static int socketForwarderWrite = 0;
+  public static int socketForwarderRead = 0;
+
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);

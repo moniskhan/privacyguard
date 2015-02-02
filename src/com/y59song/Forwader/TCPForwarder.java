@@ -138,6 +138,7 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
       rlen = ipDatagram.payLoad().dataLength();
       if(conn_info == null) conn_info = new TCPConnectionInfo(ipDatagram);
     } else return;
+    //MyLogger.debugInfo(TAG, ((TCPDatagram)ipDatagram.payLoad()).debugInfo());
     switch(status) {
       case LISTEN:
         MyLogger.debugInfo(TAG, "LISTEN");

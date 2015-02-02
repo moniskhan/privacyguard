@@ -80,6 +80,7 @@ public class TunReadThread extends Thread {
   }
 
   private class Dispatcher extends Thread {
+    int total = 0;
     public void run() {
       IPDatagram temp;
       while(!isInterrupted()) {
@@ -96,9 +97,10 @@ public class TunReadThread extends Thread {
           }
         }
         int port = temp.payLoad().getSrcPort();
-        MyLogger.debugInfo("TunReadThreadDispatcher", "START");
+        total += temp.payLoad().dataLength();
+        MyLogger.debugInfo("TunReadThreadDispatcher", "START " + total);
         forwarderPools.get(port, temp.header().protocol()).forwardRequest(temp);
-        MyLogger.debugInfo("TunReadThreadDispatcher", "FINISHED");
+        MyLogger.debugInfo("TunReadThreadDispatcher", "FINISHED " + total);
       }
       MyLogger.debugInfo("WTFWTF", "****************");
     }
