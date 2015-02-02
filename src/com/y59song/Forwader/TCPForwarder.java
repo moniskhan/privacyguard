@@ -214,7 +214,9 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
       conn_info.increaseSeq(
         forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.FINACK), null))
       );
-    } else receiver.send(payLoad.data());
+    } else {
+      receiver.send(payLoad.data());
+    }
   }
 
   private void close(boolean sendRST) {

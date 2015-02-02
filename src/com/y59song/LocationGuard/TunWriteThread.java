@@ -50,7 +50,7 @@ public class TunWriteThread extends Thread {
       }
       try {
         localOut.write(temp);
-        localOut.flush();
+        //localOut.flush();
       } catch (Exception e) {
         e.printStackTrace();
       }

@@ -1,5 +1,6 @@
 package com.y59song.Forwader.Receiver;
 
+import android.text.Selection;
 import android.util.Log;
 import com.y59song.Forwader.TCPForwarder;
 import com.y59song.LocationGuard.MyVpnService;
@@ -26,7 +27,6 @@ public class TCPForwarderWorker extends Thread {
   private final int limit = 2048;
   private ByteBuffer msg = ByteBuffer.allocate(limit);
   private ArrayDeque<byte[]> requests = new ArrayDeque<byte[]>();
-  private Sender sender;
 
   public TCPForwarderWorker(InetAddress srcAddress, int src_port, InetAddress dstAddress, int dst_port, TCPForwarder forwarder) {
     this.forwarder = forwarder;
@@ -45,7 +45,7 @@ public class TCPForwarderWorker extends Thread {
       }
       socketChannel.configureBlocking(false);
       selector = Selector.open();
-      socketChannel.register(selector, SelectionKey.OP_READ);
+      socketChannel.register(selector, SelectionKey.OP_READ | SelectionKey.OP_WRITE);
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -62,36 +62,8 @@ public class TCPForwarderWorker extends Thread {
     }
   }
 
-  public class Sender extends Thread {
-    public void run() {
-      try {
-        byte[] temp;
-        while(!isInterrupted() && !socketChannel.isConnected()) {
-          Thread.sleep(100);
-        }
-        while (!isInterrupted() && !socketChannel.socket().isClosed()) {
-          synchronized (requests) {
-            if ((temp = requests.pollFirst()) == null) {
-              requests.wait();
-              continue;
-            }
-          }
-          try {
-            socketChannel.write(ByteBuffer.wrap(temp));
-          } catch (IOException e) {
-            e.printStackTrace();
-          }
-        }
-      } catch (InterruptedException e) {
-        return;
-      }
-    }
-  }
-
   @Override
   public void run() {
-    sender = new Sender();
-    sender.start();
     while(!isInterrupted() && selector.isOpen()) {
       try {
         selector.select(0);
@@ -102,7 +74,8 @@ public class TCPForwarderWorker extends Thread {
       while(!isInterrupted() && iterator.hasNext()) {
         SelectionKey key = iterator.next();
         iterator.remove();
-        if(key.isValid() && key.isReadable()) {
+        if(!key.isValid()) continue;
+        else if(key.isReadable()) {
           try {
             msg.clear();
             int length = socketChannel.read(msg);
@@ -115,6 +88,23 @@ public class TCPForwarderWorker extends Thread {
             byte[] temp = new byte[length];
             msg.get(temp);
             forwarder.forwardResponse(temp);
+          } catch (IOException e) {
+            e.printStackTrace();
+          }
+        } else if(key.isWritable()) {
+          byte[] temp;
+          synchronized (requests) {
+            if ((temp = requests.pollFirst()) == null) {
+              try {
+                requests.wait(10);
+              } catch (InterruptedException e) {
+                e.printStackTrace();
+              }
+              continue;
+            }
+          }
+          try {
+            socketChannel.write(ByteBuffer.wrap(temp));
           } catch (IOException e) {
             e.printStackTrace();
           }
@@ -139,17 +129,6 @@ public class TCPForwarderWorker extends Thread {
       }
     } catch (IOException e) {
       e.printStackTrace();
-    }
-    if(sender != null && sender.isAlive()) {
-      try {
-        Thread.interrupted();
-        if(sender.isAlive()) {
-          sender.interrupt();
-          sender.join();
-        }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
     }
   }
 }
