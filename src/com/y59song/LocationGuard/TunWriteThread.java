@@ -19,6 +19,7 @@
 
 package com.y59song.LocationGuard;
 
+import com.y59song.Utilities.ByteOperations;
 import com.y59song.Utilities.MyLogger;
 
 import java.io.FileDescriptor;
@@ -64,6 +65,7 @@ public class TunWriteThread extends Thread {
   }
 
   public void write(byte[] data) {
+    //MyLogger.debugInfo("TestCheckSum", ByteOperations.byteArrayToHexString(data));
     synchronized(writeQueue) {
       writeQueue.addLast(data);
       writeQueue.notify();

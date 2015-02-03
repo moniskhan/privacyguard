@@ -2,6 +2,7 @@ package com.y59song.Network.IP;
 
 import com.y59song.Network.TransportHeader;
 import com.y59song.Utilities.ByteOperations;
+import com.y59song.Utilities.MyLogger;
 
 /**
  * Created by frank on 2014-03-26.
@@ -37,6 +38,8 @@ public abstract class IPPayLoad {
     byte[] pseudoHeader = this.getPseudoHeader(ipHeader);
     header.setCheckSum(new byte[]{0, 0});
     byte[] toComputeCheckSum = ByteOperations.concatenate(pseudoHeader, header.toByteArray(), data);
+    //MyLogger.debugInfo("TestCheckSum", ByteOperations.byteArrayToHexString(toComputeCheckSum));
+    //MyLogger.debugInfo("TestCheckSum", ByteOperations.byteArrayToHexString(ByteOperations.computeCheckSum(toComputeCheckSum)));
     header.setCheckSum(ByteOperations.computeCheckSum(toComputeCheckSum));
   }
 }

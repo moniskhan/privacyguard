@@ -25,7 +25,7 @@ public class TCPForwarderWorker extends Thread {
   private SocketChannel socketChannel;
   private Selector selector;
   private TCPForwarder forwarder;
-  private final int limit = 2048;
+  private final int limit = 1200;
   private ByteBuffer msg = ByteBuffer.allocate(limit);
   private ArrayDeque<byte[]> requests = new ArrayDeque<byte[]>();
   private Sender sender;
@@ -121,6 +121,9 @@ public class TCPForwarderWorker extends Thread {
               close();
               return;
             }
+            MyLogger.debugInfo("TCPForwarderWorker", "" + socketChannel.socket().getLocalPort() + ":" + socketChannel.socket().getPort() + " " + total + " : " + length);
+            total += length;
+            MyLogger.debugInfo("TCPForwarderWorker", "" + socketChannel.socket().getLocalPort() + ":" + socketChannel.socket().getPort() + " " + total + " : " + length);
             msg.flip();
             byte[] temp = new byte[length];
             msg.get(temp);

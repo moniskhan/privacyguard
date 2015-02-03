@@ -17,6 +17,11 @@ public class TCPDatagram extends IPPayLoad {
     return new TCPDatagram(header, Arrays.copyOfRange(data, header.offset(), data.length));
   }
 
+  public static TCPDatagram create(byte[] data, int offset, int len) {
+    TCPHeader header = new TCPHeader(data, offset);
+    return new TCPDatagram(header, Arrays.copyOfRange(data, header.offset() + offset, len));
+  }
+
   public TCPDatagram(TCPHeader header, byte[] data) {
     this.header = header;
     this.data = data;
