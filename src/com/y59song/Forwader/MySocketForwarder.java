@@ -247,7 +247,8 @@ public class MySocketForwarder extends Thread {
       byte[] buff = new byte[2048];
       int got;
       while ((got = in.read(buff)) > -1) {
-        String msg = new String(Arrays.copyOfRange(buff, 0, got));
+        String msg = new String(buff, 0, got);
+        //String msg = new String(Arrays.copyOfRange(buff, 0, got));
         if(LocationGuard.doFilter) {
           if (EVALUATE) {
               if (outgoing) {
