@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayDeque;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Created by y59song on 06/06/14.
@@ -38,7 +39,8 @@ public class TunReadThread extends Thread {
   private final FileInputStream localIn;
   private final FileChannel localInChannel;
   private final int limit = 2048;
-  private final ArrayDeque<IPDatagram> readQueue = new ArrayDeque<IPDatagram>();
+  //private final ArrayDeque<IPDatagram> readQueue = new ArrayDeque<IPDatagram>();
+  private ConcurrentLinkedQueue<IPDatagram> readQueue = new ConcurrentLinkedQueue<IPDatagram>();
   private final ForwarderPools forwarderPools;
   private final Dispatcher dispatcher;
 
@@ -60,15 +62,17 @@ public class TunReadThread extends Thread {
           packet.flip();
           if ((ip = IPDatagram.create(packet)) != null) {
             //MyLogger.debugInfo("TunReadThread", ByteOperations.byteArrayToString(ip.payLoad().data()));
-            synchronized (readQueue) {
+            /*
+            synchronized(readQueue) {
               readQueue.addLast(ip);
-              //MyLogger.debugInfo("TunReadThread", "NotifyDispatcher");
               readQueue.notify();
             }
+            */
+            readQueue.offer(ip);
           }
         } else {
           // length = 0 is possible, -1 means reach the end of the stream
-          Thread.sleep(10);
+          Thread.sleep(1);
         }
       }
     } catch (IOException e) {
@@ -84,25 +88,27 @@ public class TunReadThread extends Thread {
     public void run() {
       IPDatagram temp;
       while(!isInterrupted()) {
+        /*
         synchronized (readQueue) {
-          if ((temp = readQueue.pollFirst()) == null) {
+          while ((temp = readQueue.pollFirst()) == null) {
             try {
-              //MyLogger.debugInfo("TunReadThreadDispatcher", "waiting");
               readQueue.wait();
             } catch (InterruptedException e) {
-              //MyLogger.debugInfo("WTFWTF", "****************");
               e.printStackTrace();
             }
-            continue;
+          }
+        }
+        */
+        while((temp = readQueue.poll()) == null) {
+          try {
+            Thread.sleep(10);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
           }
         }
         int port = temp.payLoad().getSrcPort();
-        total += temp.payLoad().dataLength();
-        MyLogger.debugInfo("TunReadThreadDispatcher", "START " + total);
         forwarderPools.get(port, temp.header().protocol()).forwardRequest(temp);
-        MyLogger.debugInfo("TunReadThreadDispatcher", "FINISHED " + total);
       }
-      MyLogger.debugInfo("WTFWTF", "****************");
     }
   }
 

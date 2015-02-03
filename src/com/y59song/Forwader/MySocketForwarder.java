@@ -43,60 +43,69 @@ import java.util.*;
 
 
 public class MySocketForwarder extends Thread {
+  private static final String TIME_STAMP_FORMAT = "MM-dd HH:mm:ss.SSS";
   private static String TAG = MySocketForwarder.class.getSimpleName();
   private static boolean EVALUATE = false;
   private static boolean DEBUG = false;
   private static boolean PROTECT = true;
+  private static int limit = 1200;
   private boolean outgoing = false;
   private ArrayList<IPlugin> plugins;
   private MyVpnService vpnService;
   private String appName = null;
   private String packageName = null;
-  private static int limit = 1200;
-
   private Socket inSocket;
   private InputStream in;
   private OutputStream out;
   private String destIP;
-  private static final String TIME_STAMP_FORMAT = "MM-dd HH:mm:ss.SSS";
   private SimpleDateFormat df = new SimpleDateFormat(TIME_STAMP_FORMAT, Locale.CANADA);
 
   private SocketChannel inChannel, outChannel;
+
+  public MySocketForwarder(Socket inSocket, Socket outSocket, boolean isOutgoing, MyVpnService vpnService) {
+    this.inSocket = inSocket;
+    try {
+      this.in = inSocket.getInputStream();
+      this.out = outSocket.getOutputStream();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    this.outgoing = isOutgoing;
+    this.destIP = outSocket.getInetAddress().getHostAddress();
+    if(outSocket.getPort() == 443) destIP += " (SSL)";
+    this.vpnService = vpnService;
+    this.plugins = vpnService.getNewPlugins();
+    setDaemon(true);
+  }
+
+  public MySocketForwarder(SocketChannel in, SocketChannel out, boolean isOutgoing, MyVpnService vpnService) {
+    this.inChannel = in;
+    this.outChannel = out;
+    this.outgoing = isOutgoing;
+    this.destIP = out.socket().getInetAddress().getHostAddress();
+    if(out.socket().getPort() == 443) destIP += " (SSL)";
+    this.vpnService = vpnService;
+    this.plugins = vpnService.getNewPlugins();
+    setDaemon(true);
+  }
 
   public static void connect(Socket clientSocket, Socket serverSocket, MyVpnService vpnService) throws Exception {
     if (clientSocket != null && serverSocket != null && clientSocket.isConnected() && serverSocket.isConnected()) {
       clientSocket.setSoTimeout(0);
       serverSocket.setSoTimeout(0);
 
+      /*
       SocketChannel clientSocketChannel = clientSocket.getChannel();
       SocketChannel serverSocketChannel = serverSocket.getChannel();
-      //clientSocketChannel.configureBlocking(false);
-      //serverSocketChannel.configureBlocking(false);
+      clientSocketChannel.configureBlocking(false);
+      serverSocketChannel.configureBlocking(false);
 
       MySocketForwarder clientServer = new MySocketForwarder(clientSocketChannel, serverSocketChannel, true, vpnService);
       MySocketForwarder serverClient = new MySocketForwarder(serverSocketChannel, clientSocketChannel, false, vpnService);
-      clientServer.start();
-      serverClient.start();
-      MyLogger.debugInfo(TAG, "Start forwarding");
-      while (clientServer.isAlive())
-        clientServer.join();
-      while (serverClient.isAlive())
-        serverClient.join();
-      clientSocket.close();
-      serverSocket.close();
-      MyLogger.debugInfo(TAG, "Stop forwarding");
-    } else{
-      MyLogger.debugInfo(TAG, "skipping socket forwarding because of invalid sockets");
-      if (clientSocket != null && clientSocket.isConnected()){
-        clientSocket.close();
-      }
-      if (serverSocket != null && serverSocket.isConnected()){
-        serverSocket.close();
-      }
-    }
+      */
 
-      /*
-      MySocketForwarder clientServer = new MySocketForwarder(clientSocketChannel, serverSocketChannel, true, vpnService);
+
+      MySocketForwarder clientServer = new MySocketForwarder(clientSocket, serverSocket, true, vpnService);
       MySocketForwarder serverClient = new MySocketForwarder(serverSocket, clientSocket, false, vpnService);
       clientServer.start();
       serverClient.start();
@@ -118,7 +127,6 @@ public class MySocketForwarder extends Thread {
         serverSocket.close();
       }
     }
-    */
   }
 
   public void filter(String msg) {
@@ -151,7 +159,7 @@ public class MySocketForwarder extends Thread {
     }
   }
 
-  public void run() {
+  public void run2() {
     ByteBuffer msg = ByteBuffer.allocate(limit);
     int len, len2 = 0, total = 0;
     StringBuilder stringBuilder = new StringBuilder(limit);
@@ -185,7 +193,7 @@ public class MySocketForwarder extends Thread {
     }
   }
 
-  public void run2() {
+  public void run1() {
     Selector selector = null;
     try {
       selector = Selector.open();
@@ -214,66 +222,31 @@ public class MySocketForwarder extends Thread {
             if (length < 0) return;
             msg.flip();
             filter(new String(msg.array(), 0, length));
-            while (true) {
+            while (msg.hasRemaining()) {
               outChannel.write(msg);
-              if (msg.hasRemaining()) {
-                MyLogger.debugInfo(TAG, "Remaining" + msg.remaining() + " : " + length);
-                Thread.sleep(10);
-              } else break;
             }
           } catch (SocketException e) {
             MyLogger.debugInfo(TAG, "WAIT here");
             e.printStackTrace();
           } catch (IOException e) {
             e.printStackTrace();
-          } catch (InterruptedException e) {
-            e.printStackTrace();
           }
         }
+      }
+      try {
+        Thread.sleep(10);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
       }
     }
     MyLogger.debugInfo(TAG, TAG + " End" + " : " + outgoing);
   }
 
-  public MySocketForwarder(Socket inSocket, Socket outSocket, boolean isOutgoing, MyVpnService vpnService) {
-    this.inSocket = inSocket;
-    try {
-      this.in = inSocket.getInputStream();
-      this.out = outSocket.getOutputStream();
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-    this.outgoing = isOutgoing;
-    this.destIP = outSocket.getInetAddress().getHostAddress();
-    if(outSocket.getPort() == 443) destIP += " (SSL)";
-    this.vpnService = vpnService;
-    this.plugins = vpnService.getNewPlugins();
-    setDaemon(true);
-  }
-
-  public MySocketForwarder(SocketChannel in, SocketChannel out, boolean isOutgoing, MyVpnService vpnService) {
-    this.inChannel = in;
-    this.outChannel = out;
-    this.outgoing = isOutgoing;
-    this.destIP = out.socket().getInetAddress().getHostAddress();
-    if(out.socket().getPort() == 443) destIP += " (SSL)";
-    this.vpnService = vpnService;
-    this.plugins = vpnService.getNewPlugins();
-    setDaemon(true);
-  }
-
-  public void run_temp() {
+  public void run() {
     try {
       byte[] buff = new byte[2048];
       int got;
       while ((got = in.read(buff)) > -1) {
-        if(outgoing) {
-          LocationGuard.socketForwarderWrite += got;
-          MyLogger.debugInfo(TAG, "Write " + LocationGuard.socketForwarderWrite + ":" + LocationGuard.tcpForwarderWorkerWrite);
-        } else {
-          LocationGuard.socketForwarderRead += got;
-          MyLogger.debugInfo(TAG, "Read " + LocationGuard.socketForwarderRead + ":" + LocationGuard.tcpForwarderWorkerRead);
-        }
         String msg = new String(Arrays.copyOfRange(buff, 0, got));
         if(LocationGuard.doFilter) {
           if (EVALUATE) {
@@ -282,12 +255,10 @@ public class MySocketForwarder extends Thread {
                       ConnectionDescriptor des = vpnService.getClientAppResolver().getClientDescriptorBySocket(inSocket);
                       if (des != null) appName = des.getNamespace();
                   }
-                  //MyLogger.log(appName, df.format(new Date()), "IP : " + destIP + "\nRequest : " + msg, ((LocationDetection) plugins.get(0)).getLocations());
               }
           } else {
               for (IPlugin plugin : plugins) {
                   String ret = outgoing ? plugin.handleRequest(msg) : plugin.handleResponse(msg);
-                  MyLogger.debugInfo(TAG, "" + (outgoing) + " " + got);
                   if (ret != null && outgoing) {
                       if (appName == null) {
                           ConnectionDescriptor des = vpnService.getClientAppResolver().getClientDescriptorBySocket(inSocket);
@@ -297,13 +268,8 @@ public class MySocketForwarder extends Thread {
                           }
                       }
                       vpnService.notify(appName + " " + ret);
-                      //MyLogger.log(packageName, df.format(new Date()), "IP : " + destIP + "\nRequest : " + msg + "\nType : " + ret, ((LocationDetection) plugins.get(0)).getLocations());
                   }
-                  msg = outgoing ? plugin.modifyRequest(msg) : plugin.modifyResponse(msg);
               }
-              //buff = msg.getBytes();
-              //got = buff.length;
-              //if (PROTECT && outgoing) Log.i(TAG, new String(Arrays.copyOfRange(buff, 0, got)));
           }
         }
         out.write(buff, 0, got);
@@ -314,14 +280,5 @@ public class MySocketForwarder extends Thread {
       ignore.printStackTrace();
       MyLogger.debugInfo(TAG, "outgoing : " + outgoing);
     }
-    /*
-    finally {
-      try {
-        this.inSocket.close();
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
-    }
-    */
   }
 }

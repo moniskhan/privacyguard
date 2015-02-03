@@ -26,13 +26,15 @@ import java.io.FileDescriptor;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayDeque;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Created by y59song on 02/06/14.
  */
 public class TunWriteThread extends Thread {
   private final FileOutputStream localOut;
-  private final ArrayDeque<byte[]> writeQueue = new ArrayDeque<byte[]>();
+  //private final ArrayDeque<byte[]> writeQueue = new ArrayDeque<byte[]>();
+  private final ConcurrentLinkedQueue<byte[]> writeQueue = new ConcurrentLinkedQueue<byte[]>();
 
   public TunWriteThread(FileDescriptor fd, MyVpnService vpnService) {
     localOut = new FileOutputStream(fd);
@@ -42,6 +44,7 @@ public class TunWriteThread extends Thread {
     int total = 0;
     byte[] temp;
     while(!isInterrupted()) {
+      /*
       synchronized(writeQueue) {
         if ((temp = writeQueue.pollFirst()) == null) {
           try {
@@ -52,9 +55,17 @@ public class TunWriteThread extends Thread {
           continue;
         }
       }
+      */
+      while((temp = writeQueue.poll()) == null) {
+        try {
+          Thread.sleep(10);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
       try {
-        total += (temp.length - 40);
-        MyLogger.debugInfo("TunWriteThread", "Read " + total + ":" + LocationGuard.tcpForwarderWorkerRead + ":" + LocationGuard.socketForwarderRead);
+        //total += (temp.length - 40);
+        //MyLogger.debugInfo("TunWriteThread", "Read " + total + ":" + LocationGuard.tcpForwarderWorkerRead + ":" + LocationGuard.socketForwarderRead);
         localOut.write(temp);
         //localOut.flush();
       } catch (Exception e) {
@@ -66,11 +77,13 @@ public class TunWriteThread extends Thread {
 
   public void write(byte[] data) {
     //MyLogger.debugInfo("TestCheckSum", ByteOperations.byteArrayToHexString(data));
+    /*
     synchronized(writeQueue) {
       writeQueue.addLast(data);
       writeQueue.notify();
     }
-
+    */
+    writeQueue.offer(data);
   }
 
   private void clean() {

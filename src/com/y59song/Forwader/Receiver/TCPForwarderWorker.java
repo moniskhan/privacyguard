@@ -16,6 +16,7 @@ import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayDeque;
 import java.util.Iterator;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Created by y59song on 03/04/14.
@@ -27,7 +28,8 @@ public class TCPForwarderWorker extends Thread {
   private TCPForwarder forwarder;
   private final int limit = 1200;
   private ByteBuffer msg = ByteBuffer.allocate(limit);
-  private ArrayDeque<byte[]> requests = new ArrayDeque<byte[]>();
+  //private ArrayDeque<byte[]> requests = new ArrayDeque<byte[]>();
+  private ConcurrentLinkedQueue<byte[]> requests = new ConcurrentLinkedQueue<byte[]>();
   private Sender sender;
 
   public TCPForwarderWorker(InetAddress srcAddress, int src_port, InetAddress dstAddress, int dst_port, TCPForwarder forwarder) {
@@ -61,10 +63,13 @@ public class TCPForwarderWorker extends Thread {
   }
 
   public void send(byte[] request) {
+    /*
     synchronized (requests) {
       requests.addLast(request);
       requests.notify();
     }
+    */
+    requests.offer(request);
   }
 
   public class Sender extends Thread {
@@ -72,10 +77,15 @@ public class TCPForwarderWorker extends Thread {
       try {
         byte[] temp;
         while(!isInterrupted() && !socketChannel.socket().isClosed()) {
+          /*
           synchronized(requests) {
             while((temp = requests.pollFirst()) == null) {
               requests.wait();
             }
+          }
+          */
+          while((temp = requests.poll()) == null) {
+            Thread.sleep(10);
           }
           ByteBuffer tempBuf = ByteBuffer.wrap(temp);
           while(true) {
