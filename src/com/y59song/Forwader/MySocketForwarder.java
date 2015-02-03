@@ -40,6 +40,7 @@ import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 
 public class MySocketForwarder extends Thread {
@@ -59,6 +60,8 @@ public class MySocketForwarder extends Thread {
   private OutputStream out;
   private String destIP;
   private SimpleDateFormat df = new SimpleDateFormat(TIME_STAMP_FORMAT, Locale.CANADA);
+
+  private ConcurrentLinkedQueue<byte[]> toFilter = new ConcurrentLinkedQueue<byte[]>();
 
   private SocketChannel inChannel, outChannel;
 
@@ -87,6 +90,53 @@ public class MySocketForwarder extends Thread {
     this.vpnService = vpnService;
     this.plugins = vpnService.getNewPlugins();
     setDaemon(true);
+  }
+
+  public class FilterThread extends Thread {
+    public void filter(byte[] bytes) {
+      //Log.d("TAG : " + LocationGuard.doFilter, msg);
+      if(LocationGuard.doFilter) {
+        String msg = new String(bytes);
+        //Log.d("TAG", msg);
+        if (EVALUATE) {
+          if (outgoing) {
+            if (appName == null) {
+              ConnectionDescriptor des = vpnService.getClientAppResolver().getClientDescriptorBySocket(inSocket);
+              if (des != null) appName = des.getNamespace();
+            }
+          }
+        } else {
+          for (IPlugin plugin : plugins) {
+            String ret = outgoing ? plugin.handleRequest(msg) : plugin.handleResponse(msg);
+            if (ret != null && outgoing) {
+              if (appName == null) {
+                ConnectionDescriptor des = vpnService.getClientAppResolver().getClientDescriptorBySocket(inSocket);
+                if (des != null) {
+                  appName = des.getName();
+                  packageName = des.getNamespace();
+                }
+              }
+              vpnService.notify(appName + " " + ret);
+            }
+            //msg = outgoing ? plugin.modifyRequest(msg) : plugin.modifyResponse(msg);
+          }
+        }
+      }
+    }
+
+    public void run() {
+      byte[] temp;
+      while(!isInterrupted()) {
+        while((temp = toFilter.poll()) == null) {
+          try {
+            Thread.sleep(10);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+        }
+        filter(temp);
+      }
+    }
   }
 
   public static void connect(Socket clientSocket, Socket serverSocket, MyVpnService vpnService) throws Exception {
@@ -129,36 +179,6 @@ public class MySocketForwarder extends Thread {
     }
   }
 
-  public void filter(String msg) {
-    //Log.d("TAG : " + LocationGuard.doFilter, msg);
-    if(LocationGuard.doFilter) {
-      //Log.d("TAG", msg);
-      if (EVALUATE) {
-        if (outgoing) {
-          if (appName == null) {
-            ConnectionDescriptor des = vpnService.getClientAppResolver().getClientDescriptorBySocket(inSocket);
-            if (des != null) appName = des.getNamespace();
-          }
-        }
-      } else {
-        for (IPlugin plugin : plugins) {
-          String ret = outgoing ? plugin.handleRequest(msg) : plugin.handleResponse(msg);
-          if (ret != null && outgoing) {
-            if (appName == null) {
-              ConnectionDescriptor des = vpnService.getClientAppResolver().getClientDescriptorBySocket(inSocket);
-              if (des != null) {
-                appName = des.getName();
-                packageName = des.getNamespace();
-              }
-            }
-            vpnService.notify(appName + " " + ret);
-          }
-          //msg = outgoing ? plugin.modifyRequest(msg) : plugin.modifyResponse(msg);
-        }
-      }
-    }
-  }
-
   public void run2() {
     ByteBuffer msg = ByteBuffer.allocate(limit);
     int len, len2 = 0, total = 0;
@@ -175,7 +195,7 @@ public class MySocketForwarder extends Thread {
         if (len < 0) return;
         // Build string from byte array
         //stringBuilder.insert(0, msg.array(), 0, len);
-        if(LocationGuard.doFilter) filter(new String(msg.array(), 0, len));
+        //if(LocationGuard.doFilter) filter(new String(msg.array(), 0, len));
         while (msg.hasRemaining()) {
           len2 = outChannel.write(msg);
           //MyLogger.debugInfo(TAG, "Remaining" + msg.hasRemaining());
@@ -221,7 +241,7 @@ public class MySocketForwarder extends Thread {
             MyLogger.debugInfo(TAG, "Read from channel " + length + " " + outgoing + " " + inChannel.socket().getPort());
             if (length < 0) return;
             msg.flip();
-            filter(new String(msg.array(), 0, length));
+            //filter(new String(msg.array(), 0, length));
             while (msg.hasRemaining()) {
               outChannel.write(msg);
             }
@@ -243,36 +263,13 @@ public class MySocketForwarder extends Thread {
   }
 
   public void run() {
+    FilterThread filterThread = new FilterThread();
+    if(LocationGuard.doFilter) filterThread.start();
     try {
       byte[] buff = new byte[2048];
       int got;
       while ((got = in.read(buff)) > -1) {
-        String msg = new String(buff, 0, got);
-        //String msg = new String(Arrays.copyOfRange(buff, 0, got));
-        if(LocationGuard.doFilter) {
-          if (EVALUATE) {
-              if (outgoing) {
-                  if (appName == null) {
-                      ConnectionDescriptor des = vpnService.getClientAppResolver().getClientDescriptorBySocket(inSocket);
-                      if (des != null) appName = des.getNamespace();
-                  }
-              }
-          } else {
-              for (IPlugin plugin : plugins) {
-                  String ret = outgoing ? plugin.handleRequest(msg) : plugin.handleResponse(msg);
-                  if (ret != null && outgoing) {
-                      if (appName == null) {
-                          ConnectionDescriptor des = vpnService.getClientAppResolver().getClientDescriptorBySocket(inSocket);
-                          if (des != null) {
-                              appName = des.getName();
-                              packageName = des.getNamespace();
-                          }
-                      }
-                      vpnService.notify(appName + " " + ret);
-                  }
-              }
-          }
-        }
+        if(LocationGuard.doFilter) toFilter.offer(Arrays.copyOfRange(buff, 0, got));
         out.write(buff, 0, got);
         //out.flush();
       }
@@ -281,5 +278,6 @@ public class MySocketForwarder extends Thread {
       ignore.printStackTrace();
       MyLogger.debugInfo(TAG, "outgoing : " + outgoing);
     }
+    if(filterThread.isAlive()) filterThread.interrupt();
   }
 }
