@@ -26,7 +26,7 @@ public class TCPForwarderWorker extends Thread {
   private SocketChannel socketChannel;
   private Selector selector;
   private TCPForwarder forwarder;
-  private final int limit = 1200;
+  private final int limit = 1368;
   private ByteBuffer msg = ByteBuffer.allocate(limit);
   //private ArrayDeque<byte[]> requests = new ArrayDeque<byte[]>();
   private ConcurrentLinkedQueue<byte[]> requests = new ConcurrentLinkedQueue<byte[]>();
@@ -38,15 +38,11 @@ public class TCPForwarderWorker extends Thread {
       socketChannel = SocketChannel.open();
       Socket socket = socketChannel.socket();
       socket.setReuseAddress(true);
-      MyLogger.debugInfo(TAG, srcAddress.getHostAddress() + ":" + src_port + " " + LocalServer.port);
-      MyLogger.debugInfo(TAG, dstAddress.getHostAddress() + ":" + dst_port);
       socket.bind(new InetSocketAddress(InetAddress.getLocalHost(), src_port));
       try {
         socketChannel.connect(new InetSocketAddress(LocalServer.port));
         while(!socketChannel.finishConnect()) ;
-        MyLogger.debugInfo(TAG, "Connected");
       } catch (ConnectException e) {
-        MyLogger.debugInfo(TAG, "Connect exception !!! : " + srcAddress.getHostAddress() + ":" + src_port + " " + LocalServer.port);
         e.printStackTrace();
         return;
       }
@@ -63,12 +59,6 @@ public class TCPForwarderWorker extends Thread {
   }
 
   public void send(byte[] request) {
-    /*
-    synchronized (requests) {
-      requests.addLast(request);
-      requests.notify();
-    }
-    */
     requests.offer(request);
   }
 
@@ -77,22 +67,13 @@ public class TCPForwarderWorker extends Thread {
       try {
         byte[] temp;
         while(!isInterrupted() && !socketChannel.socket().isClosed()) {
-          /*
-          synchronized(requests) {
-            while((temp = requests.pollFirst()) == null) {
-              requests.wait();
-            }
-          }
-          */
           while((temp = requests.poll()) == null) {
             Thread.sleep(10);
           }
           ByteBuffer tempBuf = ByteBuffer.wrap(temp);
           while(true) {
             LocationGuard.tcpForwarderWorkerWrite += socketChannel.write(tempBuf);
-            MyLogger.debugInfo(TAG, "Write " + LocationGuard.tcpForwarderWorkerWrite);
             if(tempBuf.hasRemaining()) {
-              MyLogger.debugInfo(TAG, "looping");
               Thread.sleep(10);
             } else break;
           }
@@ -108,7 +89,6 @@ public class TCPForwarderWorker extends Thread {
 
   @Override
   public void run() {
-    int total = 0;
     sender = new Sender();
     sender.start();
     while(!isInterrupted() && selector.isOpen()) {
@@ -127,57 +107,24 @@ public class TCPForwarderWorker extends Thread {
             msg.clear();
             int length = socketChannel.read(msg);
             if(length <= 0 || isInterrupted()) {
-              MyLogger.debugInfo("TCPForwarderWorker", "Length from socket channel is " + length + " : " + socketChannel.socket().getPort());
               close();
               return;
             }
-            MyLogger.debugInfo("TCPForwarderWorker", "" + socketChannel.socket().getLocalPort() + ":" + socketChannel.socket().getPort() + " " + total + " : " + length);
-            total += length;
-            MyLogger.debugInfo("TCPForwarderWorker", "" + socketChannel.socket().getLocalPort() + ":" + socketChannel.socket().getPort() + " " + total + " : " + length);
             msg.flip();
             byte[] temp = new byte[length];
             msg.get(temp);
             LocationGuard.tcpForwarderWorkerRead += length;
-            MyLogger.debugInfo("TCPForwarderWorker", "Read " + LocationGuard.tcpForwarderWorkerRead + ":" + LocationGuard.socketForwarderRead);
             forwarder.forwardResponse(temp);
           } catch (IOException e) {
             e.printStackTrace();
           }
         }
-
-        /*
-         else if(key.isWritable()) {
-          byte[] temp;
-          synchronized (requests) {
-            if ((temp = requests.pollFirst()) == null) {
-              try {
-                MyLogger.debugInfo("TCPForwarderWorker", "Waiting");
-                requests.wait(100);
-              } catch (InterruptedException e) {
-                e.printStackTrace();
-                close();
-                return;
-              }
-              continue;
-            }
-          }
-          try {
-            MyLogger.debugInfo("TCPForwarderWorker", "Writing");
-            socketChannel.write(ByteBuffer.wrap(temp));
-          } catch (IOException e) {
-            e.printStackTrace();
-            close();
-            return;
-          }
-        }
-         */
       }
     }
     close();
   }
 
   public void close() {
-    MyLogger.debugInfo(TAG, "Receiver stop " + socketChannel.socket().getLocalPort());
     try {
       if(selector != null) selector.close();
     } catch (IOException e) {

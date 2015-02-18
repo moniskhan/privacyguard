@@ -40,11 +40,12 @@ import java.io.FileInputStream;
 import java.security.KeyStoreException;
 import java.util.List;
 
-public class LocationGuard extends Activity implements View.OnClickListener, CompoundButton.OnCheckedChangeListener {
+public class LocationGuard extends Activity implements View.OnClickListener {
   private Intent intent;
 
   public static final boolean debug = false;
   public static boolean doFilter = true;
+  public static boolean asynchronous = false;
 
   public static int tcpForwarderWorkerRead = 0;
   public static int tcpForwarderWorkerWrite = 0;
@@ -57,7 +58,18 @@ public class LocationGuard extends Activity implements View.OnClickListener, Com
     setContentView(R.layout.main);
     intent = new Intent(this, MyVpnService.class);
     findViewById(R.id.connect).setOnClickListener(this);
-    ((ToggleButton)findViewById(R.id.toggleButton)).setOnCheckedChangeListener(this);
+    ((ToggleButton)findViewById(R.id.toggleButton)).setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+      @Override
+      public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+        doFilter = isChecked;
+      }
+    });
+    ((ToggleButton)findViewById(R.id.asynchronousButton)).setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+      @Override
+      public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+        asynchronous = isChecked;
+      }
+    });
     initialize();
     installCertificate();
   }
@@ -119,9 +131,4 @@ public class LocationGuard extends Activity implements View.OnClickListener, Com
 
     return false;
   }
-
-    @Override
-    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-        LocationGuard.doFilter = isChecked;
-    }
 }

@@ -26,6 +26,8 @@ import com.y59song.LocationGuard.MyVpnService;
 import com.y59song.Network.TCP.TCPDatagram;
 import com.y59song.Plugin.IPlugin;
 import com.y59song.Plugin.LocationDetection;
+import com.y59song.Utilities.ByteArrayPool.ByteArray;
+import com.y59song.Utilities.ByteArrayPool.ByteArrayPool;
 import com.y59song.Utilities.MyLogger;
 import org.sandrop.webscarab.model.ConnectionDescriptor;
 
@@ -49,7 +51,8 @@ public class MySocketForwarder extends Thread {
   private static boolean EVALUATE = false;
   private static boolean DEBUG = false;
   private static boolean PROTECT = true;
-  private static int limit = 1200;
+  private static final String UNKNOWN = "unknown";
+  private static int limit = 1368;
   private boolean outgoing = false;
   private ArrayList<IPlugin> plugins;
   private MyVpnService vpnService;
@@ -61,7 +64,9 @@ public class MySocketForwarder extends Thread {
   private String destIP;
   private SimpleDateFormat df = new SimpleDateFormat(TIME_STAMP_FORMAT, Locale.CANADA);
 
-  private ConcurrentLinkedQueue<byte[]> toFilter = new ConcurrentLinkedQueue<byte[]>();
+  //private ConcurrentLinkedQueue<byte[]> toFilter = new ConcurrentLinkedQueue<byte[]>();
+  private ConcurrentLinkedQueue<ByteArray> toFilter = new ConcurrentLinkedQueue<ByteArray>();
+  private static ByteArrayPool byteArrayPool = new ByteArrayPool(10, limit);
 
   private SocketChannel inChannel, outChannel;
 
@@ -93,11 +98,8 @@ public class MySocketForwarder extends Thread {
   }
 
   public class FilterThread extends Thread {
-    public void filter(byte[] bytes) {
-      //Log.d("TAG : " + LocationGuard.doFilter, msg);
+    public void filter(String msg) {
       if(LocationGuard.doFilter) {
-        String msg = new String(bytes);
-        //Log.d("TAG", msg);
         if (EVALUATE) {
           if (outgoing) {
             if (appName == null) {
@@ -106,6 +108,7 @@ public class MySocketForwarder extends Thread {
             }
           }
         } else {
+          //Log.d("TAG", msg);
           for (IPlugin plugin : plugins) {
             String ret = outgoing ? plugin.handleRequest(msg) : plugin.handleResponse(msg);
             if (ret != null && outgoing) {
@@ -114,19 +117,21 @@ public class MySocketForwarder extends Thread {
                 if (des != null) {
                   appName = des.getName();
                   packageName = des.getNamespace();
+                } else {
+                  appName = UNKNOWN;
+                  packageName = UNKNOWN;
                 }
               }
               vpnService.notify(appName + " " + ret);
             }
-            //msg = outgoing ? plugin.modifyRequest(msg) : plugin.modifyResponse(msg);
           }
         }
       }
     }
 
     public void run() {
-      byte[] temp;
-      while(!isInterrupted()) {
+      ByteArray temp;
+      while(true) {
         while((temp = toFilter.poll()) == null) {
           try {
             Thread.sleep(10);
@@ -134,7 +139,10 @@ public class MySocketForwarder extends Thread {
             e.printStackTrace();
           }
         }
-        filter(temp);
+        //Log.d("toFilter", "" + toFilter.size());
+        String msg = new String(temp.data(), 0, temp.length());
+        byteArrayPool.release(temp);
+        filter(msg);
       }
     }
   }
@@ -144,7 +152,7 @@ public class MySocketForwarder extends Thread {
       clientSocket.setSoTimeout(0);
       serverSocket.setSoTimeout(0);
 
-      /*
+/*
       SocketChannel clientSocketChannel = clientSocket.getChannel();
       SocketChannel serverSocketChannel = serverSocket.getChannel();
       clientSocketChannel.configureBlocking(false);
@@ -152,11 +160,11 @@ public class MySocketForwarder extends Thread {
 
       MySocketForwarder clientServer = new MySocketForwarder(clientSocketChannel, serverSocketChannel, true, vpnService);
       MySocketForwarder serverClient = new MySocketForwarder(serverSocketChannel, clientSocketChannel, false, vpnService);
-      */
-
+*/
 
       MySocketForwarder clientServer = new MySocketForwarder(clientSocket, serverSocket, true, vpnService);
       MySocketForwarder serverClient = new MySocketForwarder(serverSocket, clientSocket, false, vpnService);
+
       clientServer.start();
       serverClient.start();
 
@@ -213,7 +221,7 @@ public class MySocketForwarder extends Thread {
     }
   }
 
-  public void run1() {
+  public void run_select() {
     Selector selector = null;
     try {
       selector = Selector.open();
@@ -264,20 +272,27 @@ public class MySocketForwarder extends Thread {
 
   public void run() {
     FilterThread filterThread = new FilterThread();
-    if(LocationGuard.doFilter) filterThread.start();
+    if(LocationGuard.doFilter && LocationGuard.asynchronous) filterThread.start();
     try {
-      byte[] buff = new byte[2048];
+      byte[] buff = new byte[limit];
       int got;
       while ((got = in.read(buff)) > -1) {
-        if(LocationGuard.doFilter) toFilter.offer(Arrays.copyOfRange(buff, 0, got));
+        if(LocationGuard.doFilter) {
+          if (LocationGuard.asynchronous) {
+            if(!filterThread.isAlive()) filterThread.start();
+            toFilter.offer(byteArrayPool.getByteArray(buff, got));
+          } else {
+            if(filterThread.isAlive()) filterThread.interrupt();
+            filterThread.filter(new String(buff, 0, got));
+          }
+        }
         out.write(buff, 0, got);
-        //out.flush();
+        out.flush();
       }
-      MyLogger.debugInfo(TAG, "SocketForwarder stop, got : " + got);
     } catch (Exception ignore) {
       ignore.printStackTrace();
       MyLogger.debugInfo(TAG, "outgoing : " + outgoing);
     }
-    if(filterThread.isAlive()) filterThread.interrupt();
+    if(LocationGuard.asynchronous && filterThread.isAlive()) filterThread.interrupt();
   }
 }

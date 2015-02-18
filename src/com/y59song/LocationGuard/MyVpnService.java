@@ -75,7 +75,12 @@ public class MyVpnService extends VpnService implements Runnable {
   private LocalServer localServer;
 
   // Plugin
-  private Class pluginClass[] = {LocationDetection.class, PhoneStateDetection.class, ContactDetection.class};
+  private Class pluginClass[] = {
+    LocationDetection.class,
+    PhoneStateDetection.class,
+    ContactDetection.class
+  };
+  private ArrayList<IPlugin> plugins;
 
   @Override
   public int onStartCommand(Intent intent, int flags, int startId) {
@@ -114,6 +119,7 @@ public class MyVpnService extends VpnService implements Runnable {
     //b.addRoute("0.0.0.0", 0);
     b.addRoute("208.90.99.252", 32);
     b.addRoute("129.97.171.63", 32);
+    b.addRoute("192.168.0.104", 32);
     //b.addRoute("74.125.226.97", 32);
     b.setMtu(1500);
     mInterface = b.establish();
@@ -171,14 +177,15 @@ public class MyVpnService extends VpnService implements Runnable {
   }
 
   public ArrayList<IPlugin> getNewPlugins() {
-    ArrayList<IPlugin> ret = new ArrayList<IPlugin>();
+    if(plugins != null) return plugins;
+    plugins = new ArrayList<IPlugin>();
     try {
       for(Class c : pluginClass) {
         IPlugin temp = (IPlugin)c.newInstance();
         temp.setContext(this);
-        ret.add(temp);
+        plugins.add(temp);
       }
-      return ret;
+      return plugins;
     } catch (InstantiationException e) {
       e.printStackTrace();
     } catch (IllegalAccessException e) {
