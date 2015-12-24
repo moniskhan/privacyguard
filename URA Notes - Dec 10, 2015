@@ -44,6 +44,15 @@ keytool -list -v -keystore "%USERPROFILE%\.android\debug.keystore" -alias androi
 SHA1: 58:95:40:B9:31:02:12:93:34:78:0D:ED:C6:8A:A1:3B:66:9A:07:99
 API key: AIzaSyBL9tVkRjRtayPIpBnnri7MfAlka-lkwyU
 
+TODO:
+- Social Media integration (be able to share leakage statistics)
+- OnResume/OnStop as well as testing app life cycle/corner cases (force stop, etc.)
+- Stress testing (ensure VPN does not cause performance issues
+- User studies to gain feedback/Tweaks to front facing UI
+- Rating system which associates each app with a five star rating based on leakage history/ show star rating below app icons on phone
+- Allow an option for the user to share statistics with us so overall stats on apps can be aggregated
+- Potentially display leakage stats as they become more complex in graphical form
+- Test on multiple OS versions, and look into new features offered by 5.x and 6.x
 
 Code Documentation:
 MySocketForwarder.java
