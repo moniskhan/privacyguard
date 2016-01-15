@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="app_name">Privacy Guard</string>
-    <string name="connect">Enable Privacy Guard</string>
-    <string name="disconnect">Disconnect</string>
-</resources>
