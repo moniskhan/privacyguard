@@ -9,6 +9,11 @@ public abstract class TransportHeader extends AbsHeader {
     srcPort = ((data[0] & 0xFF) << 8) + (data[1] & 0xFF);
     dstPort = ((data[2] & 0xFF) << 8) + (data[3] & 0xFF);
   }
+
+  public TransportHeader(byte []data, int start) {
+    srcPort = ((data[0 + start] & 0xFF) << 8) + (data[1 + start] & 0xFF);
+    dstPort = ((data[2 + start] & 0xFF) << 8) + (data[3 + start] & 0xFF);
+  }
   @Override
   public abstract TransportHeader reverse();
   public int getSrcPort() {

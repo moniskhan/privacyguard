@@ -1,5 +1,6 @@
 package com.y59song.Network.TCP;
 
+import android.util.Log;
 import com.y59song.Network.TransportHeader;
 import com.y59song.Utilities.ByteOperations;
 
@@ -30,6 +31,17 @@ public class TCPHeader extends TransportHeader {
     checkSum_pos = 16;
     checkSum_size = 2;
     this.data = Arrays.copyOfRange(data, 0, 20);
+  }
+
+  public TCPHeader(byte[] data, int start) {
+    super(data, start);
+    offset = (data[12 + start] & 0xF0) / 4;
+    data[12 + start] = (byte)((data[12 + start] & 0x0F) + 0x50);
+    seq_num = ByteOperations.byteArrayToInteger(data, 4 + start, 8);
+    ack_num = ByteOperations.byteArrayToInteger(data, 8 + start, 12);
+    checkSum_pos = 16;
+    checkSum_size = 2;
+    this.data = Arrays.copyOfRange(data, start, 20 + start);
   }
 
   public static TCPHeader createHeader(TCPHeader origin, int size, byte flag) {

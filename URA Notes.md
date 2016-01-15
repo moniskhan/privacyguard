@@ -1,17 +1,9 @@
-Android build process:
-- Imported project from local repo
-- failed to find target with hash string 'android-19'
-	Fix: Install packages via SDK Manager
-- Dependency error: Error:(30, 30) error: package android.support.v4.app does not exist
-	Error fix:
-	In Android Studio:
 
-	1. Right click on your projects "app" folder and click on -> module settings
-	2. Click on the "dependencies" tab
-	3. Click on the + sign to add a new dependency and select "Library Dependency"
-	4. Look for the library you need and add it
-- install intelhaxm-android to be able to run emulator
-- Change the memory limit of AVD emulator to that of HAXM (1 GB) for emulator to work: http://stackoverflow.com/questions/21031903/how-to-fix-hax-is-not-working-and	-emulator-runs-in-emulation-mode
+# Android build process:
+1. Download Android Studio, install SDK 19
+2. Imported project from local repo
+3. install intelhaxm-android to be able to run emulator
+4. Change the memory limit of AVD emulator to that of HAXM (1 GB) for emulator to work:	[Stackoverflow](http://stackoverflow.com/questions/21031903/how-to-fix-hax-is-not-working-and	-emulator-runs-in-emulation-mode)
 
 
 To execute "adb devices":
@@ -70,3 +62,21 @@ API 23 (6.0):
 Renaming Notes:
 Package names have "y59song"?
 Define strings/constants etc. in R.layout xml files?
+
+## FAQ
+
+### 1. Failed to find target with hash string 'android-19'
+
+
+	Error:Cause: failed to find target with hash string 'android-19' in: /Users/justinhu/Library/Android/sdk <a href="openAndroidSdkManager">Open Android SDK Manager</a>
+
+- Install packages via SDK Manager
+
+### 2. Dependency error
+	 Error:(30, 30) error: package android.support.v4.app does not exist
+In Android Studio:
+
+1. Right click on your projects "app" folder and click on -> module settings
+2. Click on the "dependencies" tab
+3. Click on the + sign to add a new dependency and select "Library Dependency"
+4. Look for the library you need and add it

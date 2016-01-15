@@ -36,7 +36,6 @@ public class MyClientResolver implements IClientResolver {
 
   @Override
   public ConnectionDescriptor getClientDescriptorBySocket(Socket socket) {
-
     int port = socket.getPort();
     String address = socket.getInetAddress().getHostAddress();
     BufferedReader reader = null;

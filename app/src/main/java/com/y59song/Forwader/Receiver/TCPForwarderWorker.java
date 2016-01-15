@@ -1,10 +1,9 @@
 package com.y59song.Forwader.Receiver;
 
-import android.util.Log;
 import com.y59song.Forwader.TCPForwarder;
-import com.y59song.PrivacyGuard.MyVpnService;
+import com.y59song.LocationGuard.LocationGuard.LocationGuard;
+import com.y59song.LocationGuard.LocationGuard.MyVpnService;
 import com.y59song.Network.LocalServer;
-import com.y59song.Utilities.MyLogger;
 
 import java.io.IOException;
 import java.net.*;
@@ -12,20 +11,21 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
-import java.util.ArrayDeque;
 import java.util.Iterator;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Created by y59song on 03/04/14.
  */
 public class TCPForwarderWorker extends Thread {
-  private final String TAG = "TCPReceiver";
+  private final String TAG = "TCPForwarderWorker";
   private SocketChannel socketChannel;
   private Selector selector;
   private TCPForwarder forwarder;
-  private final int limit = 2048;
+  private final int limit = 1368;
   private ByteBuffer msg = ByteBuffer.allocate(limit);
-  private ArrayDeque<byte[]> requests = new ArrayDeque<byte[]>();
+  //private ArrayDeque<byte[]> requests = new ArrayDeque<byte[]>();
+  private ConcurrentLinkedQueue<byte[]> requests = new ConcurrentLinkedQueue<byte[]>();
   private Sender sender;
 
   public TCPForwarderWorker(InetAddress srcAddress, int src_port, InetAddress dstAddress, int dst_port, TCPForwarder forwarder) {
@@ -34,12 +34,11 @@ public class TCPForwarderWorker extends Thread {
       socketChannel = SocketChannel.open();
       Socket socket = socketChannel.socket();
       socket.setReuseAddress(true);
-      MyLogger.debugInfo(TAG, srcAddress.getHostAddress() + ":" + src_port + " " + LocalServer.port);
       socket.bind(new InetSocketAddress(InetAddress.getLocalHost(), src_port));
       try {
         socketChannel.connect(new InetSocketAddress(LocalServer.port));
+        while(!socketChannel.finishConnect()) ;
       } catch (ConnectException e) {
-        MyLogger.debugInfo(TAG, "Connect exception !!! : " + srcAddress.getHostAddress() + ":" + src_port + " " + LocalServer.port);
         e.printStackTrace();
         return;
       }
@@ -56,34 +55,30 @@ public class TCPForwarderWorker extends Thread {
   }
 
   public void send(byte[] request) {
-    synchronized (requests) {
-      requests.addLast(request);
-      if(requests.size() == 1) requests.notify();
-    }
+    requests.offer(request);
   }
 
   public class Sender extends Thread {
     public void run() {
       try {
         byte[] temp;
-        while(!isInterrupted() && !socketChannel.isConnected()) {
-          Thread.sleep(100);
-        }
-        while (!isInterrupted() && !socketChannel.socket().isClosed()) {
-          synchronized (requests) {
-            if ((temp = requests.pollFirst()) == null) {
-              requests.wait();
-              continue;
-            }
+        while(!isInterrupted() && !socketChannel.socket().isClosed()) {
+          while((temp = requests.poll()) == null) {
+            Thread.sleep(10);
           }
-          try {
-            socketChannel.write(ByteBuffer.wrap(temp));
-          } catch (IOException e) {
-            e.printStackTrace();
+          ByteBuffer tempBuf = ByteBuffer.wrap(temp);
+          while(true) {
+            LocationGuard.tcpForwarderWorkerWrite += socketChannel.write(tempBuf);
+            if(tempBuf.hasRemaining()) {
+              Thread.sleep(10);
+            } else break;
           }
         }
       } catch (InterruptedException e) {
+        e.printStackTrace();
         return;
+      } catch (IOException e) {
+        e.printStackTrace();
       }
     }
   }
@@ -102,18 +97,19 @@ public class TCPForwarderWorker extends Thread {
       while(!isInterrupted() && iterator.hasNext()) {
         SelectionKey key = iterator.next();
         iterator.remove();
-        if(key.isValid() && key.isReadable()) {
+        if(!key.isValid()) continue;
+        else if(key.isReadable()) {
           try {
             msg.clear();
             int length = socketChannel.read(msg);
             if(length <= 0 || isInterrupted()) {
-              MyLogger.debugInfo("TCPForwarderWorker", "Length from socket channel is " + length + " : " + socketChannel.socket().getPort());
               close();
               return;
             }
             msg.flip();
             byte[] temp = new byte[length];
             msg.get(temp);
+            LocationGuard.tcpForwarderWorkerRead += length;
             forwarder.forwardResponse(temp);
           } catch (IOException e) {
             e.printStackTrace();
@@ -125,31 +121,21 @@ public class TCPForwarderWorker extends Thread {
   }
 
   public void close() {
-    MyLogger.debugInfo(TAG, "Receiver stop " + socketChannel.socket().getLocalPort());
     try {
       if(selector != null) selector.close();
     } catch (IOException e) {
       e.printStackTrace();
     }
+    if(sender != null && sender.isAlive()) {
+      sender.interrupt();
+    }
     try {
       if(socketChannel.isConnected()) {
         socketChannel.socket().close();
         socketChannel.close();
-        socketChannel = null;
       }
     } catch (IOException e) {
       e.printStackTrace();
-    }
-    if(sender != null && sender.isAlive()) {
-      try {
-        Thread.interrupted();
-        if(sender.isAlive()) {
-          sender.interrupt();
-          sender.join();
-        }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
     }
   }
 }

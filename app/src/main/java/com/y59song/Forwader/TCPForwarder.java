@@ -138,20 +138,26 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
       rlen = ipDatagram.payLoad().dataLength();
       if(conn_info == null) conn_info = new TCPConnectionInfo(ipDatagram);
     } else return;
+    //MyLogger.debugInfo(TAG, ((TCPDatagram)ipDatagram.payLoad()).debugInfo());
     switch(status) {
       case LISTEN:
+        MyLogger.debugInfo(TAG, "LISTEN");
         if(!handle_LISTEN(ipDatagram, flag, len)) return;
         else break;
       case SYN_ACK_SENT:
+        MyLogger.debugInfo(TAG, "SYN_ACK_SENT");
         if(!handle_SYN_ACK_SENT(flag)) return;
         else break;
       case DATA:
+        MyLogger.debugInfo(TAG, "DATA");
         if(!handle_DATA(ipDatagram, flag, len, rlen)) return;
         else break;
       case HALF_CLOSE_BY_CLIENT:
+        MyLogger.debugInfo(TAG, "HALF_CLOSE_BY_CLIENT");
         if(!handle_HALF_CLOSE_BY_CLIENT(flag)) return;
         else break;
       case HALF_CLOSE_BY_SERVER:
+        MyLogger.debugInfo(TAG, "HALF_CLOSE_BY_SERVER");
         if(!handle_HALF_CLOSE_BY_SERVER(flag, len)) return;
         else break;
       case CLOSED:
@@ -214,21 +220,28 @@ public class TCPForwarder extends AbsForwarder implements ICommunication {
       conn_info.increaseSeq(
         forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.FINACK), null))
       );
-    } else receiver.send(payLoad.data());
+    } else {
+      receiver.send(payLoad.data());
+    }
   }
 
   private void close(boolean sendRST) {
     closed = true;
     if(sendRST) forwardResponse(conn_info.getIPHeader(), new TCPDatagram(conn_info.getTransHeader(0, TCPHeader.RST), null));
     status = Status.CLOSED;
+    if(receiver != null) receiver.interrupt();
+    /*
     try {
       if(receiver != null) {
         receiver.interrupt();
-        receiver.join();
+        MyLogger.debugInfo("TunReadThreadDispatcher", "INTERRUPTTEE");
+        if(receiver.isAlive()) receiver.join();
+        MyLogger.debugInfo("TunReadThreadDispatcher", "JOINED");
       }
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
+    */
     vpnService.getForwarderPools().release(this);
     if(DEBUG) Log.d(TAG, "Released");
   }
